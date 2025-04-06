@@ -71,8 +71,10 @@ async def get_current_valid_api_token(
         )
 
     token_hash = hash_api_token(api_key)
-    db_token = crud.token.get_by_hash(db, token_hash=token_hash)
-
+    print(f'{token_hash = }')
+    db_token = crud.get_token_by_hash(db, token_hash=token_hash)
+    print(f'{db_token = }')
+    
     if not db_token:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

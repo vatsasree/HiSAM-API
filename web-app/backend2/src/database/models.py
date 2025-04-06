@@ -16,6 +16,8 @@ class JobStatus(str, Enum):
     PROCESSING = "PROCESSING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
+    COMPLETED_WITH_ERRORS = "COMPLETED_WITH_ERRORS"
+    
 
 
 class User(Base):
