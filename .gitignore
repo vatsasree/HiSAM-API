@@ -1,0 +1,4 @@
+*.jpg
+*.ckpt
+*.log
+*__pycache__

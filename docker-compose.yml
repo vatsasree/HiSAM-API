@@ -1,0 +1,48 @@
+version: '3.3'  # Specify a supported version for Compose syntax
+
+services:
+  app:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api_linetr
+    ports:
+      - "2305:2305"  # Map host port 2305 to container port 2305
+    volumes:
+      - ./store/user_files:/app/store/user_files  # Persistent storage for user files
+      - ./store/log_files:/app/store/log_files  # Persistent storage for user logs
+      - ./store/model_files:/app/store/model_files:ro  # Read-only volume for model files
+      - ./web-app:/app/web-app # to modify web-app source code
+    env_file:
+      - ./web-app/server/.env  # Environment variables
+    depends_on:
+      - db  # Ensure MySQL starts before the app
+    command: >  # Wait for MySQL to be ready - (sh -c "wait-for-it db:3306 -- uvicorn web-app.server.main:app --host 0.0.0.0 --port 2305 --reload")
+      sh -c "wait-for-it db:3306 -- gunicorn web-app.server.main:app -w 6 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:2305  --timeout 300"
+
+
+  db:
+    image: mysql:8
+    container_name: linetr_api_mysql
+    restart: always
+    env_file:
+      - ./web-app/server/.env  # Environment variables
+    ports:
+      - "3307:3306"  # Expose MySQL on port 3307 for host access
+    volumes:
+      - db_data:/var/lib/mysql  # Persistent database storage
+
+volumes:
+  db_data:
+    # driver: local
+    # driver_opts:
+    #   type: none
+    #   device: /data3/amalj/DOCKER_STORE
+    #   o: bind
