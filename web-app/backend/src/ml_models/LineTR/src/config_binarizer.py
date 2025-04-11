@@ -1,0 +1,26 @@
+NUM_QUERIES = 200
+WANDB = False
+VISUALIZE = False
+PROJECT_NAME = f"TLDr2_bin"
+BRANCH_NAME = f"bin"
+COMMIT_NAME = "Experiment3"
+
+
+PATCHES_VERSION = "7a"
+
+
+BATCH_SIZE = 24
+LR = 1e-4
+NUM_CPUS = 9
+NUM_EPOCHS = 150
+
+
+POS_FOCAL_COEFF = 0.25
+NEG_FOCAL_COEFF = 0.75
+
+
+VIS_EXP_NAME = "pos_enc_plus_Experiment4"
+VIS_EPOCH = 79
+
+
+DESC = f"{VIS_EXP_NAME}__epoch={VIS_EPOCH}"

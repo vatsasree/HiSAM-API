@@ -1,7 +1,74 @@
-version: '3.3'  # Specify a supported version for Compose syntax
+version: '3.3'
 
 services:
   app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: textline_api_webapp
+    restart: unless-stopped
+    ports:
+      - "2305:2305"  # Map host port 2305 to container port 2305
+    volumes:
+      # To modify web-app source code
+      - ./web-app/backend:/app
+      # - ./web-app:/app/web-app ###################################################################################
+      # Persistent storage
+      - ./store/user_files/uploaded_documents:/app/store/user_files/uploaded_documents
+      - ./store/log_files:/app/store/log_files
+      - ./store/model_files:/app/store/model_files:ro
+
+    env_file:
+      - ./web-app/backend/.env  # Environment variables
+    depends_on:
+      db:
+        condition: service_healthy # Wait for DB healthcheck to pass
+      redis:
+        condition: service_healthy # Wait for Redis healthcheck to pass
+    command: >  # Wait for MySQL to be ready - (sh -c "wait-for-it db:3306 -- uvicorn web-app.server.main:app --host 0.0.0.0 --port 2305 --reload")
+      # sh -c "wait-for-it db:3306 -- gunicorn web-app.server.main:app -w 6 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:2305  --timeout 300"
+      # sh -c "gunicorn web-app.server.main:app -w 6 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:2305  --timeout 300"
+      sh -c "gunicorn src.main:app -w 6 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:2305 --timeout 300"
+    networks:
+    - textline-app-network
+
+
+  db:
+    image: mysql:8 #mysql:9.2.0
+    container_name: textline_api_mysql
+    restart: always
+    env_file:
+      - ./web-app/backend/.env  # Environment variables
+    ports:
+      - "3307:3306"  # Expose MySQL on port 3307 for host access
+    volumes:
+      - db_data:/var/lib/mysql  # Persistent database storage
+    command: --default-time-zone=SYSTEM
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD"] # Use $$ to escape $ for compose
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+    - textline-app-network
+
+
+  redis:
+    image: redis:7.4.2-alpine
+    container_name: textline_api_redis
+    restart: always
+    ports:
+      - "${REDIS_PORT:-6379}:6379" # Expose Redis port to host if needed (optional)
+    healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+    networks:
+    - textline-app-network
+
+
+  worker:
     deploy:
       resources:
         reservations:
@@ -11,38 +78,31 @@ services:
               capabilities: [gpu]
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: api_linetr
-    ports:
-      - "2305:2305"  # Map host port 2305 to container port 2305
-    volumes:
-      - ./store/user_files:/app/store/user_files  # Persistent storage for user files
-      - ./store/log_files:/app/store/log_files  # Persistent storage for user logs
-      - ./store/model_files:/app/store/model_files:ro  # Read-only volume for model files
-      - ./web-app:/app/web-app # to modify web-app source code
+      dockerfile: Dockerfile # Shares the same image as app
+    container_name: textline_api_celery_worker
+    restart: unless-stopped
     env_file:
-      - ./web-app/server/.env  # Environment variables
+      - ./web-app/backend/.env  # Environment variables
+    volumes:
+      # Worker needs access to the same code and storage as the app
+      - ./web-app/backend:/app
+      # Map persistent storage locations (matching app service)
+      - ./store/user_files/uploaded_documents:/app/store/user_files/uploaded_documents
+      - ./store/log_files:/app/store/log_files
+      - ./store/model_files:/app/store/model_files:ro
+    command: celery -A src.worker.celery_app worker --loglevel=INFO -Q image_processing_queue
     depends_on:
-      - db  # Ensure MySQL starts before the app
-    command: >  # Wait for MySQL to be ready - (sh -c "wait-for-it db:3306 -- uvicorn web-app.server.main:app --host 0.0.0.0 --port 2305 --reload")
-      sh -c "wait-for-it db:3306 -- gunicorn web-app.server.main:app -w 6 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:2305  --timeout 300"
-
-
-  db:
-    image: mysql:8
-    container_name: linetr_api_mysql
-    restart: always
-    env_file:
-      - ./web-app/server/.env  # Environment variables
-    ports:
-      - "3307:3306"  # Expose MySQL on port 3307 for host access
-    volumes:
-      - db_data:/var/lib/mysql  # Persistent database storage
-
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_started
+    networks:
+      - textline-app-network
 volumes:
   db_data:
-    # driver: local
-    # driver_opts:
-    #   type: none
-    #   device: /data3/amalj/DOCKER_STORE
-    #   o: bind
+
+networks:
+  textline-app-network:
+    driver: bridge
