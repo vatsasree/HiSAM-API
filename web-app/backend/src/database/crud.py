@@ -38,6 +38,23 @@ def get_token_by_hash(db: Session, *, token_hash: str) -> Optional[models.ApiTok
     """Get a token by its SHA-256 hash."""
     return db.query(models.ApiToken).filter(models.ApiToken.token_hash == token_hash).first()
 
+def get_token_privileges(db: Session, token_id: int) -> List[schemas.PrivilegeRead]:
+    # 1. Query the Privilege table joined to the token_privileges association
+    privileges = (
+        db.query(models.Privilege)
+          .join(
+              models.token_privileges,
+              models.Privilege.id == models.token_privileges.c.privilege_id
+          )
+          .filter(models.token_privileges.c.token_id == token_id)
+          .all()
+    )
+
+    # 2. Convert each ORM Privilege into the Pydantic schema
+    return [
+        schemas.PrivilegeRead.model_validate(priv)  # use model_validate per Pydantic V2 :contentReference[oaicite:0]{index=0}
+        for priv in privileges
+    ]
 
 # --- Document CRUD ---
 def get_document_by_id(db: Session, doc_id: int) -> Optional[models.DocumentRecord]:
@@ -89,3 +106,6 @@ def update_job_status(db: Session, job_id_bytes: bytes, status: models.JobStatus
 
 def get_job_by_job_id(db: Session, job_id_bytes: bytes) -> models.JobRecord:
     return db.query(models.JobRecord).filter(models.JobRecord.job_id == job_id_bytes).first()
+
+# --- User Privilage CRUD --- #
+# def get_user_privileges(db:Session, )

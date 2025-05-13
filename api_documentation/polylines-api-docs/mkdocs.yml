@@ -1,0 +1,7 @@
+site_name: IHDIA Polylines API Docs
+# dev-addr: '0.0.0.0:8001'
+nav:
+  - Home: index.md
+theme: readthedocs
+markdown_extensions:
+  - pymdownx.critic

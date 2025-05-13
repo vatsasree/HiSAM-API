@@ -1,22 +1,21 @@
-from uuid import uuid4, UUID
+from uuid import UUID
 from datetime import datetime
 from typing import List, Optional, Any, Annotated
 from pydantic import BaseModel, Field, field_validator, ConfigDict, BeforeValidator, EmailStr
 
 from src.database.models import JobStatus
 
-
 # --- Base Schemas ---
 class OrmBaseModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-# --- Validator Functions --- 
+# --- Validator Functions ---
 def convert_binary_to_uuid(v: Any) -> Optional[UUID]:
     if isinstance(v, bytes):
         try:
             return UUID(bytes=v)
         except ValueError:
-            return None # Handle case where bytes are not a valid UUID
+            return None
     if isinstance(v, UUID):
         return v
     return None
@@ -24,7 +23,8 @@ def convert_binary_to_uuid(v: Any) -> Optional[UUID]:
 # Type Alias for clarity
 BinaryUUID = Annotated[UUID, BeforeValidator(convert_binary_to_uuid)]
 
-# --- User Schemas --- 
+
+# --- User Schemas ---
 class UserBase(OrmBaseModel):
     email: str
     full_name: str
@@ -39,19 +39,31 @@ class UserUpdate(UserBase):
 class UserRead(UserBase):
     user_id: int
     is_active: bool
-    create_at: datetime
+    created_at: datetime
 
-# --- API Token Schemas --- 
+
+# --- Privilege Schemas ---
+class PrivilegeCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class PrivilegeRead(OrmBaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    description: Optional[str] = None
+
+
+# --- API Token Schemas ---
 class ApiTokenBase(OrmBaseModel):
     user_id: int
     is_active: bool = True
     expires_at: Optional[datetime] = None
 
 class ApiTokenCreate(ApiTokenBase):
-    # The raw token is only used momentarily during creation, never stored raw. Only hash is stored.
-    token_hash: str = Field(..., exclude=True) # Exclude from default serialization
+    token_hash: str = Field(..., exclude=True)
 
-class ApiTokenUpdate(OrmBaseModel): # Schema for updates by admin scripts
+class ApiTokenUpdate(OrmBaseModel):
     is_active: Optional[bool] = None
     expires_at: Optional[datetime] = None
 
@@ -62,41 +74,44 @@ class ApiTokenRead(OrmBaseModel):
     created_at: datetime
     expires_at: Optional[datetime] = None
     last_used_at: Optional[datetime] = None
+    privileges: List[PrivilegeRead] = []
 
 
-# --- Document Record Schemas --- 
+# --- Document Record Schemas ---
 class DocumentRecordBase(OrmBaseModel):
     doc_path: str
     width: Optional[int]
     height: Optional[int]
 
 class DocumentRecordCreate(DocumentRecordBase):
-    # job_id is set implicitly when creating documents for a job
     pass
 
-class DocumentRecordUpdate(OrmBaseModel): # Used by Celery Task
+class DocumentRecordUpdate(OrmBaseModel):
     status: Optional[JobStatus] = None
     output: Optional[str] = None
     error_message: Optional[str] = None
-    
+
 class DocumentRecordRead(DocumentRecordBase):
-    # doc_id: int
-    job_id: BinaryUUID # Use the custom type for conversion
+    doc_id: int
+    job_id: BinaryUUID
     status: JobStatus
     output: Optional[str] = None
-    # error_message: Optional[str] = None
-    # created_at: datetime
-    # updated_at: datetime
+    created_at: datetime
+    updated_at: datetime
 
-# --- Job Record Schema --- 
+class DocumentRecordStatus(OrmBaseModel):
+    doc_path: str
+    status: JobStatus
+
+
+# --- Job Record Schemas ---
 class JobRecordBase(OrmBaseModel):
     pass
 
 class JobRecordCreate(JobRecordBase):
-    # job_id is auto-generated (bytes in DB)
     api_token_id: int
 
-class JobRecordUpdate(OrmBaseModel): # Used by Celery Task / System
+class JobRecordUpdate(OrmBaseModel):
     status: Optional[JobStatus] = None
 
 class JobRecordRead(JobRecordBase):
@@ -105,33 +120,51 @@ class JobRecordRead(JobRecordBase):
     status: JobStatus
     created_at: datetime
     updated_at: datetime
-    documents: List[DocumentRecordRead] = [] # Include related documents
+    documents: List[DocumentRecordRead] = []
 
 
-# --- API Endpint Schemas ---
-
-# Response body for the /process endpoint
+# --- API Endpoint Schemas ---
 class ProcessResponse(BaseModel):
-    job_id: UUID # Return the standard UUID
+    job_id: UUID
     message: str = "Job accepted for processing."
     document_count: int
 
-# Response body for the /status/{job_id} endpoint
-class JobStatusResponse(BaseModel):
-    job: JobRecordRead # Return the full job details including documents
+# class JobStatusResponse(BaseModel):
+#     job: JobRecordRead
+
+
+
+
+class JobStatusCheck(BaseModel):
+    job_id: BinaryUUID
+    status: JobStatus
+    documents: List[DocumentRecordStatus] = []
 
 
 # --- Admin Script Schemas ---
 class TokenGenerationRequest(BaseModel):
     user_email: EmailStr
 
-class TokenInfo(BaseModel): # For listing tokens (never show hash/raw)
+class TokenInfo(BaseModel):
     token_id: int
     created_at: datetime
     is_active: bool
     expires_at: Optional[datetime] = None
     last_used_at: Optional[datetime] = None
+    privileges: List[PrivilegeRead] = []
 
 class UserTokenList(BaseModel):
     user: UserRead
     tokens: List[TokenInfo] = []
+
+
+# --- Document Status Schema ---
+class DocumentStatusResponse(BaseModel):
+    doc_path: str
+    status: str
+
+# Job status response schema
+class JobStatusResponse(BaseModel):
+    job_id: str
+    status: str
+    documents: List[DocumentStatusResponse] = []

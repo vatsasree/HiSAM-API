@@ -1,9 +1,21 @@
 import logging
 import os
 import shutil
+import PIL.Image
 import imagesize
 from uuid import uuid4, UUID
 from typing import List
+from pdf2image import convert_from_bytes
+
+
+
+
+import traceback
+
+
+
+
+
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
@@ -18,7 +30,7 @@ logger = logging.getLogger(config('LOGGER_NAME'))
 router = APIRouter()
 
 MAX_FILES = 100
-MAX_FILE_SIZE_MB = 100
+MAX_FILE_SIZE_MB = 500
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
 @router.post(
@@ -55,7 +67,7 @@ async def submit_processing_job(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not create storage directory for the job.")
 
     # --- 2. Save Uploaded Files & Prepare Document Records ---
-    for file in files:
+    for file_no, file in enumerate(files):
         if file.size > MAX_FILE_SIZE_BYTES:
              # Clean up already saved files for this job if one file is too large
             shutil.rmtree(job_upload_dir, ignore_errors=True)
@@ -65,41 +77,76 @@ async def submit_processing_job(
             )
 
         # Basic content type check (can be spoofed, add more robust checks if needed)
-        if not file.content_type or not file.content_type.startswith("image/"):
+        if not file.content_type or not (
+            file.content_type.startswith("image/") or file.content_type == "application/pdf"
+        ):
             shutil.rmtree(job_upload_dir, ignore_errors=True)
             raise HTTPException(
                 status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail=f"File '{file.filename}' has an unsupported content type: {file.content_type}. Only images are allowed."
+                detail=f"File '{file.filename}' has an unsupported content type: {file.content_type}. Only images or PDFs are allowed."
             )
 
-        # Sanitize filename (important for security)
-        safe_filename = secure_filename(file.filename) # Use a utility for this
-        if not safe_filename:
-             safe_filename = f"upload_{uuid4().hex}" # Generate safe name if original is bad
-
-        relative_path = Path(str(job_uuid)) / safe_filename
-        destination_path = Path(config('UPLOAD_DIR')) / relative_path
-
-        try:
-            logger.debug(f"Saving file '{file.filename}' to '{destination_path}'")
-            with open(destination_path, "wb") as buffer:
+        # If files are pdf, convert to images and 
+        
+        print('\n\n', type(file), '\n\n')
+        if file.content_type == "application/pdf":
+            pdf_path = job_upload_dir / file.filename
+            pdf_name = Path(file.filename).stem
+            # Saving pdf file 
+            with open(pdf_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
-            saved_file_paths.append(str(destination_path)) # Store full path temporarily if needed
-            # Prepare schema for DB creation, store relative path
-            width, height = imagesize.get(destination_path)
-            doc_create_schemas.append(schemas.DocumentRecordBase(
-                doc_path=str(relative_path), 
-                width=width, 
-                height=height
-            ))
-        except Exception as e:
-            logger.error(f"Failed to save uploaded file '{file.filename}': {e}", exc_info=True)
-            # Clean up potentially partially saved files and directory
-            shutil.rmtree(job_upload_dir, ignore_errors=True)
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not save file: {safe_filename}")
-        finally:
-            await file.close() # Ensure file pointer is closed
+                
+            # Convert PDF to Images
+            i = -1
+            try:
+                images = convert_from_bytes(open(pdf_path, "rb").read(), use_cropbox=True)
+                print(f'TOTAL {len(images)} images.')
+                for i, img in enumerate(images):
+                    img_name = f"{pdf_name}_page_{str(i).zfill(4)}.jpg"
+                    saved_file_path, doc_create_schema = save_file(job_uuid=job_uuid, file_name=img_name, image=img)
+                    saved_file_paths.append(saved_file_path)
+                    doc_create_schemas.append(doc_create_schema)
+            except Exception as e:
+                print(f"Inside Exception - image {i}")
+                print(traceback.format_exc())
+                logger.error(f"Error processing PDF {job_upload_dir}: {e}", exc_info=True)
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error processing PDF 2.")
+        else:
+            print('\n\nImage DETECTED\n\n')
+            saved_file_path, doc_create_schema = save_file(job_uuid=job_uuid, file_name=file.filename, image=file.file)
+            saved_file_paths.append(saved_file_path)
+            doc_create_schemas.append(doc_create_schema)
+            pass
+            # # Sanitize filename (important for security)
+            # safe_filename = secure_filename(file.filename) # Use a utility for this
+            # if not safe_filename:
+            #     safe_filename = f"upload_{uuid4().hex}" # Generate safe name if original is bad
 
+            # relative_path = Path(str(job_uuid)) / safe_filename
+            # destination_path = Path(config('UPLOAD_DIR')) / relative_path
+
+            # try:
+            #     logger.debug(f"Saving file '{file.filename}' to '{destination_path}'")
+            #     with open(destination_path, "wb") as buffer:
+            #         shutil.copyfileobj(file.file, buffer)
+            #     saved_file_paths.append(str(destination_path)) # Store full path temporarily if needed
+            #     # Prepare schema for DB creation, store relative path
+            #     width, height = imagesize.get(destination_path)
+            #     doc_create_schemas.append(schemas.DocumentRecordBase(
+            #         doc_path=str(relative_path), 
+            #         width=width, 
+            #         height=height
+            #     ))
+            # except Exception as e:
+            #     logger.error(f"Failed to save uploaded file '{file.filename}': {e}", exc_info=True)
+            #     # Clean up potentially partially saved files and directory
+            #     shutil.rmtree(job_upload_dir, ignore_errors=True)
+            #     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not save file: {safe_filename}")
+            # finally:
+            #     await file.close() # Ensure file pointer is closed
+        print("\n\n FILE ONE COMPLETED\n")
+        await file.close() # Ensure file pointer is closed
+    print("\n\n ALL FILES COMPLETED\n")
     if not doc_create_schemas:
          # Should not happen if validation passed, but good safety check
          shutil.rmtree(job_upload_dir, ignore_errors=True)
@@ -195,18 +242,63 @@ def secure_filename(filename: str) -> str:
     """
     # Remove directory traversal attempts
     filename = filename.replace("../", "").replace("..\\", "")
-    # Keep only alphanumeric, underscore, hyphen, dot
-    filename = re.sub(r'[^\w\.\-]', '_', filename)
-    # Collapse multiple underscores/hyphens
-    filename = re.sub(r'[-_]+', '_', filename).strip('_')
-    # Limit length (optional)
-    max_len = 100
-    if len(filename) > max_len:
-         name, ext = os.path.splitext(filename)
-         filename = name[:max_len - len(ext) -1] + ext
+    # # Keep only alphanumeric, underscore, hyphen, dot
+    # filename = re.sub(r'[^\w\.\-]', '_', filename)
+    # # Collapse multiple underscores/hyphens
+    # filename = re.sub(r'[-_]+', '_', filename).strip('_')
+    # # Limit length (optional)
+    # max_len = 100
+    # if len(filename) > max_len:
+    #      name, ext = os.path.splitext(filename)
+    #      filename = name[:max_len - len(ext) -1] + ext
 
     # Handle edge cases like empty filename or just "."
     if not filename or filename == '.':
         return "" # Or generate a random name
 
     return filename
+
+
+import PIL
+
+def save_file(job_uuid, file_name, image):
+    job_upload_dir = Path(config('UPLOAD_DIR')) / str(job_uuid)
+    
+    # Sanitize filename (important for security)
+    safe_filename = secure_filename(file_name) # Use a utility for this
+    if not safe_filename:
+        safe_filename = f"upload_{uuid4().hex}" # Generate safe name if original is bad
+
+    relative_path = Path(str(job_uuid)) / safe_filename
+    destination_path = Path(config('UPLOAD_DIR')) / relative_path
+
+    try:
+        logger.debug(f"Saving file '{file_name}' to '{destination_path}'")
+        print("\n\n'Going to Save Image'\n\n")
+        if isinstance(image, PIL.Image.Image):
+            print("\n\n'PIL IMAGE'\n\n")
+            image.save(destination_path, 'PNG')
+            print("\n\n'PIL IMAGE saved'\n\n")
+        else:
+            with open(destination_path, "wb") as buffer:
+                shutil.copyfileobj(image, buffer)
+                
+        print("\n\n'Image Save completed'\n\n")
+        saved_file_path = str(destination_path) # Store full path temporarily if needed
+        # Prepare schema for DB creation, store relative path
+        width, height = imagesize.get(destination_path)
+        print(f"Dimensions = {width}, {height}")
+        doc_create_schema = schemas.DocumentRecordBase(
+            doc_path=str(relative_path), 
+            width=width, 
+            height=height
+        )
+        return saved_file_path, doc_create_schema
+    except Exception as e:
+        print(f'\n\n{file_name}\n\n')
+        logger.error(f"Failed to save uploaded file '{image}': {e}", exc_info=True)
+        # Clean up potentially partially saved files and directory
+        shutil.rmtree(job_upload_dir, ignore_errors=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not save file: {safe_filename}")
+
+    

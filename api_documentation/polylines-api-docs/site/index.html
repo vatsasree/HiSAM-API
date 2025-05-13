@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="description" content="None" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>IHDIA Polylines API Docs</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Home";
+        var mkdocs_page_input_path = "index.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="." class="icon icon-home"> IHDIA Polylines API Docs
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Home</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#table-of-contents">Table of Contents</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#authentication">Authentication</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#endpoints">Endpoints</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#polylinesprocess">/polylines/process</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#polylinesstatusjob_id">/polylines/status/{job_id}</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#polylinesstatusteijob_id">/polylines/status/tei/{job_id}</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#extras">Extras</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href=".">IHDIA Polylines API Docs</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Home</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="polylines-api">Polylines API</h1>
+<p>Polyline API can be used to extract precise polygon boundary for text-lines in documents.<br />
+<img alt="API Version" src="https://img.shields.io/badge/version-1.1-blue" /><br />
+<strong>Last Updated</strong>: May 13, 2025</p>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li><a href="#authentication">Authentication</a></li>
+<li><a href="#endpoints">Endpoints</a></li>
+<li><a href="#process">/process</a></li>
+<li><a href="#statusjob_id">/status/{job_id}</a></li>
+<li><a href="#statusteijob_id">/status/tei/{job_id}</a></li>
+<li><a href="#extras">Extras</a></li>
+</ul>
+<h2 id="authentication">Authentication</h2>
+<p>All requests must include a valid <code>X-API-Token</code> in the headers.<br />
+To obtain an API key, please contact: <a href="mailto:ravi.kiran@iiit.ac.in">ravi.kiran@iiit.ac.in</a></p>
+<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812"><strong>Github Gist of Python scripts to use Polylines API</strong></a></p>
+<h2 id="endpoints">Endpoints</h2>
+<ul>
+<li><code>/polylines/process</code> - Submit a job for processing.</li>
+<li><code>/polylines/status</code> - Check the status of a job.</li>
+<li><code>/polylines/status/tei</code> - Get the results in TEI-P5 format.</li>
+</ul>
+<h2 id="polylinesprocess">/polylines/process</h2>
+<p>You can submit one or more documents to be processed.<br />
+Supported file types are <code>.jpg, .jpeg, .png, .pdf</code>  </p>
+<p><strong><em>Parameters</em></strong>    </p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>files</code></td>
+<td>File(s)</td>
+<td>Image or PDF files (.jpg, .png, .pdf)</td>
+</tr>
+</tbody>
+</table>
+<pre><code>curl -X POST &quot;https://skeleton.iiit.ac.in/api/v1/polylines/process/&quot; \
+    -H &quot;accept: application/json&quot; \
+    -H &quot;X-API-Token: YOUR_TOKEN&quot; \
+    -F &quot;files=@/path/to/image&quot; \
+    -F &quot;files=@/path/to/pdf&quot;
+</code></pre>
+<p><strong><em>Expected Response</em></strong></p>
+<pre><code class="language-json">{
+  &quot;job_id&quot;: &quot;job_uuid&quot;,
+  &quot;message&quot;: &quot;Job accepted for processing.&quot;,
+  &quot;document_count&quot;: 2
+}
+</code></pre>
+<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812#file-submit_job-py"><strong>Sample Python script to submit a job</strong></a><br />
+<em>Usage</em>:<br />
+<code>python submit_job.py --input-dir /path/to</code> - To submit a job of documents from a directory.<br />
+<code>python submit_job.py --files /path/to/file1.jpg /path/to/file2.pdf</code> - To submit a job with a list of file paths.  </p>
+<h2 id="polylinesstatusjob_id">/polylines/status/{job_id}</h2>
+<p>You can check the status of a job with its job_id (uuid).<br />
+<strong><em>Parameters</em></strong>    </p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>job_id</code></td>
+<td>UUID</td>
+<td>Job Id (in UUID format)</td>
+</tr>
+</tbody>
+</table>
+<pre><code>curl -X GET &quot;https://skeleton.iiit.ac.in/api/v1/polylines/status/JOB_ID&quot; \
+     -H &quot;accept: application/json&quot; \
+     -H &quot;X-API-Token: YOUR_TOKEN&quot;
+</code></pre>
+<p><strong><em>Expected Response</em></strong></p>
+<pre><code>{
+  &quot;job_id&quot;: &quot;job_uuid&quot;,
+  &quot;status&quot;: &quot;PROCESSING&quot;,
+  &quot;documents&quot;: [
+    {
+      &quot;doc_path&quot;: &quot;image1.jpg&quot;,
+      &quot;status&quot;: &quot;COMPLETED&quot;
+    }, 
+    {
+      &quot;doc_path&quot;: &quot;image2.jpg&quot;,
+      &quot;status&quot;: &quot;PROCESSING&quot;
+    }
+  ]
+}
+</code></pre>
+<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812#file-check_job_status-py"><strong>Sample Python script to check job status</strong></a><br />
+<em>Usage</em>: <code>python check_job_status.py --job-id JOB_ID</code></p>
+<h2 id="polylinesstatusteijob_id">/polylines/status/tei/{job_id}</h2>
+<p>You can check get the results of the job using the job_id (uuid) as XML in TEI-P5 format.  <br />
+<strong><em>Parameters</em></strong>    </p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>job_id</code></td>
+<td>UUID</td>
+<td>Job Id (in UUID format)</td>
+</tr>
+</tbody>
+</table>
+<pre><code>curl -X GET &quot;https://skeleton.iiit.ac.in/api/v1/polylines/status/tei/JOB_ID&quot; \
+     -H &quot;accept: application/json&quot; \
+     -H &quot;X-API-Token: YOUR_TOKEN&quot;
+</code></pre>
+<mark class="critic block">
+<blockquote>
+<p>NOTE:<br />
+When a pdf file is submitted, the individual pages of the pdf file will be procssed and returned seperately in the XML. <br />
+If a document is named <em>sample_docs.pdf</em> and have 5 images, the outputs will be in the format <em>sample_docs_page_0000.jpg, sample_docs_page_0001.jpg ... sample_docs_page_0004.jpg</em>.<br />
+Refer '<graphic url="page1.jpg" width="1000" height="1400"/>' tag in the sample XML format given below.</p>
+</blockquote>
+</mark>
+<p><strong><em>Sample TEI-P5 XML Format</em></strong></p>
+<pre><code class="language-xml">&lt;TEI xmlns=&quot;http://www.tei-c.org/ns/1.0&quot;&gt;
+&lt;facsimile&gt;
+    &lt;!-- Page 1 --&gt;
+    &lt;surface xml:id=&quot;page1&quot;&gt;
+      &lt;graphic url=&quot;page1.jpg&quot; width=&quot;1000&quot; height=&quot;1400&quot;/&gt;
+      &lt;zone xml:id=&quot;page1_line1&quot; points=&quot;100,200 300,200 300,220 100,220&quot; type=&quot;line&quot;/&gt;
+      &lt;zone xml:id=&quot;page1_line2&quot; points=&quot;100,250 320,250 320,270 100,270&quot; type=&quot;line&quot;/&gt;
+    &lt;/surface&gt;
+
+    &lt;!-- Page 2 --&gt;
+    &lt;surface xml:id=&quot;page2&quot;&gt;
+      &lt;graphic url=&quot;page2.jpg&quot; width=&quot;1200&quot; height=&quot;1600&quot;/&gt;
+      &lt;zone xml:id=&quot;page2_line1&quot; points=&quot;120,300 500,300 500,320 120,320&quot; type=&quot;line&quot;/&gt;
+      &lt;zone xml:id=&quot;page2_line2&quot; points=&quot;130,350 480,350 480,370 130,370&quot; type=&quot;line&quot;/&gt;
+    &lt;/surface&gt;
+&lt;/facsimile&gt;
+&lt;/TEI&gt;
+
+&lt;TEI xmlns=&quot;http://www.tei-c.org/ns/1.0&quot;&gt;
+  &lt;facsimile&gt;
+    &lt;!-- Page 1 --&gt;
+    &lt;surface xml:id=&quot;page1&quot; ulx=&quot;0&quot; uly=&quot;0&quot; lrx=&quot;1000&quot; lry=&quot;1400&quot;&gt;
+      &lt;graphic url=&quot;page1.jpg&quot; width=&quot;1000&quot; height=&quot;1400&quot;/&gt;
+
+      &lt;!-- Polygonal zone representing the text-line polygon --&gt;
+      &lt;zone xml:id=&quot;page1_zone1&quot; points=&quot;100,200 300,200 300,220 100,220&quot; type=&quot;line&quot;/&gt;
+
+      &lt;!-- Path elements representing the text-line scribble --&gt;
+      &lt;path xml:id=&quot;page1_path1&quot; points=&quot;120,300 500,300 500,320 120,320&quot;/&gt;
+      &lt;path xml:id=&quot;page1_path2&quot; points=&quot;130,350 480,350 480,370 130,370&quot;/&gt;
+
+      &lt;!-- Embedded binarized image --&gt;
+      &lt;binaryObject mimeType=&quot;image/gif&quot;&gt;
+        R0lGODdhMAAwAPAAAAAAAP///ywAAAAAMAAwAAAC8IyPqcvt3wCcDkiLc7C0qwy
+        GHhSWpjQu5yqm......
+      &lt;/binaryObject&gt;
+    &lt;/surface&gt;
+  &lt;/facsimile&gt;
+&lt;/TEI&gt;  
+
+    surface: one page of the document
+    graphic: page image metadata
+    zone: one text-line polygon
+    path: one scribble line
+    points: list of coordinates (in pixels)
+    binaryObject: binarized image as binary object.
+</code></pre>
+<p><strong>Note:</strong> By default you will get access to only the predicted polygons. For other response objects like scribbles and binarized image, contact the admin.  </p>
+<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812#file-check_job_status-py"><strong>Sample Python script to get the XML result</strong></a><br />
+<em>Usage</em>: <code>python check_job_status.py --job-id JOB_ID --save-xml-to /path/to/</code><br />
+<em>--save-xml-to argument would save the XML response to the provided location</em></p>
+<h2 id="extras">Extras</h2>
+<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812#file-overlay_polygons_from_tei-py"><strong>Python script to overlay the polygons using the TEI-P5 xml file</strong></a><br />
+Overlay detected text-line polygons on original images.<br />
+<em>Usage</em>: <code>python overlay_polygons_from_tei.py --docs_dir /path/to/documents --xml_path /path/to/tei.xml --output_dir /path/to/</code></p>
+<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812#file-overlay_scribbles_from_tei-py"><strong>Python script to overlay the scribbles using the TEI-P5 xml file</strong></a><br />
+Overlay detected text-line scribbles on original images.<br />
+<em>Usage</em>: <code>python overlay_scribbles_from_tei.py --docs_dir /path/to/documents --xml_path /path/to/tei.xml --output_dir /path/to/</code>  </p>
+<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812#file-extract_textlines_from_tei-py"><strong>Python script to crop the text-lines from images the TEI-P5 xml file</strong></a><br />
+Crop the individual text-lines from the images.<br />
+<em>Usage</em>: <code>python extract_textlines_from_tei.py --docs_dir /path/to/documents --xml_path /path/to/tei.xml --output_dir /path/to/</code></p>
+<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812#file-save_binary_images-py"><strong>Python script to save the binary map  using the TEI-P5 xml file</strong></a><br />
+Save the binary map generated by the api.<br />
+<em>Usage</em>: <code>python save_binary_images.py --xml_path /path/to/file.xml --output_dir /path/to/</code></p>
+<!-- 
+
+
+ -->
+              
+            </div>
+          </div><footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
+
+<!--
+MkDocs version : 1.6.1
+Build Date UTC : 2025-05-13 07:36:22.741288+00:00
+-->

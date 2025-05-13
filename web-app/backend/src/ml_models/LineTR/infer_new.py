@@ -27,9 +27,9 @@ MAX_MERGING_ITERS = 5
 
 DATASET = sys.argv[-1]
 
-COLORS_PKL_PATH = "/data3/amalj/template_api/store/model_files/linetrckp/colors_new.pkl"
-LINETR_CHECKPOINT = "/data3/amalj/template_api/store/model_files/linetrckp/best_scr.ckpt"
-LINETR_BINARIZER_CHECKPOINT = "/data3/amalj/template_api/store/model_files/linetrckp/best_bin.ckpt"
+COLORS_PKL_PATH = "/data3/amal.joseph/template_api/store/model_files/linetrckp/colors_new.pkl"
+LINETR_CHECKPOINT = "/data3/amal.joseph/template_api/store/model_files/linetrckp/best_scr.ckpt"
+LINETR_BINARIZER_CHECKPOINT = "/data3/amal.joseph/template_api/store/model_files/linetrckp/best_bin.ckpt"
 
 class Infer:
 	def __init__(self):
@@ -71,11 +71,6 @@ class Infer:
 		return self.img_tiles
 
 
-	def load_json(self, json_path=f"{DATASET}/{DATASET}_Test/{DATASET}_TEST.json"):
-		self.json_data = None
-		with open(json_path, "r") as f:
-			self.json_data = json.load(f)
-		print("JSON loaded sucessfully!")
 
 
 	def pad_img(self, img, padding_top, padding_left, padding_bottom, padding_right):
@@ -97,7 +92,7 @@ class Infer:
 
 
 	def remove_outliers(self):
-		print(f"removing outliers...")	
+
 		for i in range(self.n_lines):
 			line_pts_y, line_pts_x = np.where(self.global_canvas == i + 1)
 			if len(line_pts_y) == 0:
@@ -108,19 +103,7 @@ class Infer:
 				self.global_weight_canvas[line_pts_y, line_pts_x] = 0 
 			else:
 				self.global_weight_canvas[line_pts_y, line_pts_x] = max_weight
- 
-		# print(f"{np.max(self.global_weight_canvas) = }") 
-		# print(f"{np.min(self.global_weight_canvas) = }") 
-		# sys.exit(0) 
-		# min_val = np.min(self.global_weight_canvas) 
-		# max_val = np.max(self.global_weight_canvas) 
-		# global_weight_canvas_normalized = ((self.global_weight_canvas - min_val) * 255) / (max_val - min_val) 
-		# global_weight_canvas_normalized = global_weight_canvas_normalized.astype(np.uint8) 
 
-		# _, self.global_weight_canvas = cv2.threshold(global_weight_canvas_normalized, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU) 
-		# print(f"{self.img.dtype = }")
-		# print(f"{np.max(self.img) = }") 
-		# print(f"{np.min(self.img) = }") 
 		img_ = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY).astype(np.uint8)   
 		_, otsu_threshold = cv2.threshold(img_, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU) 
 		kernel = np.ones((3, 3), dtype=np.uint8)  
@@ -170,9 +153,10 @@ class Infer:
 	def reproject_bin(self):
 		global_heat_map = np.zeros((self.img.shape[0], self.img.shape[1]))
 
-		print(f"performing reprojection of the binary image...")
 
-		for window in tqdm(self.img_tiles):
+
+		# for window in tqdm(self.img_tiles):
+		for window in self.img_tiles:
 			patch_size = window["patch_size"]
 
 
@@ -196,7 +180,7 @@ class Infer:
 		global_heat_map = (global_heat_map - min_val) / (max_val - min_val)
 		self.global_heat_map = ((1.0 - global_heat_map) * 255).astype(np.uint8)
 
-		return
+		return 
 
 
 	def reproject(self):
@@ -219,8 +203,8 @@ class Infer:
 		self.n_lines = 0
 
 
-		print(f"performing reprojection...")
-		for window in tqdm(self.img_tiles):
+		# for window in tqdm(self.img_tiles):
+		for window in self.img_tiles:
 			patch_size = window["patch_size"]
 			
 
@@ -392,7 +376,6 @@ class Infer:
 		# self.global_canvas[self.global_weight_canvas == 0.0] = 0.0 
 
 
-		print(f"performing post projection merging...")
 		merging_iters = 0
 		while True:
 			change = False
@@ -492,7 +475,6 @@ class Infer:
 
 	def find_best_patch_sizes(self):
 		# finding the best patch sizes
-		print(f"analyzing context and scale information...")
 		self.img_tiles = []
 		for i, patch_size in enumerate(self.query_patch_sizes): # ENUMERATE REMOVE
 			self.img_tiles += self.sample_patches(patch_size, patch_size[0] , patch_size[1] // 2)
@@ -551,7 +533,6 @@ class Infer:
 				min_side = min(self.img.shape[0], self.img.shape[1])
 				self.patch_sizes.append((min_side // 3, min_side // 3))
 
-		print(f"the best patch sizes are {self.patch_sizes}")
 	
 
 	def process_image(self, img_path):
@@ -567,48 +548,35 @@ class Infer:
 		else:
 			self.query_patch_sizes = [(128, 128), (256, 256), (384, 284), (512, 512)]
 		
-		print("starting inference")
 		# finding the patch sizes
 		self.find_best_patch_sizes()
 
 
 		# sampling the patches
-		print('sampling the patches')
 		self.img_tiles = []
 		for patch_size in self.patch_sizes:
 			self.img_tiles += self.sample_patches(patch_size, patch_size[0] // 3, patch_size[1] // 2)
 
 		# performing inference on all patches using dataloader
-		print('infering the patches')
 		self.infer_patches(infer_bin=True)
 
 
 		# at this point the appropriate patches have been sampled
 		# reprojecting the sampled points on the whole image and forming lines
-		print('reprojecting')
 		self.reproject()
 
 
 		# reprojecting the heatmap outputs on the whole whole image
-		print('reprojecting bin')
 		self.reproject_bin()
-		# print(f"{self.global_heat_map.shape = }") 
-		# print(f"{self.global_weight_canvas.shape = }") 
-		# cv2.imwrite("heatmap.jpg", self.global_heat_map)
+
 		self.global_weight_canvas = self.global_weight_canvas * self.global_heat_map 
-		# fig, axs = plt.subplots(2, 1, figsize=(20, 5))   
-		# axs[0].imshow(self.global_weight_canvas) 
-		# axs[1].imshow(self.img)  
-		# plt.savefig(f"global_weight.jpg") 
+
 
 
 
 		# saving the heat map
 		heatmap = np.repeat(self.global_heat_map[:, :, None], 3, axis=-1)
-		# if self.name is not None:
-		# 	cv2.imwrite(f"heatmaps_{self.name}/{img_path.split('/')[-1]}", heatmap)
-		# else:
-		# 	cv2.imwrite(f"heatmap_{img_path.split('/')[-1]}", heatmap)
+
 
 
 		# removing the outliers!
@@ -645,11 +613,7 @@ class Infer:
 		# merging based on the reading order
 		# based on the assumption that in palm leaf manuscripts lines go all the way from left to the right
 		self.merge_based_on_reading_order()
-		print(f"the number of lines is {self.n_lines}")
 
-
-		# for i in range(self.n_lines):
-		# 	cv2.polylines(self.img, [self.scribbles[i]], False, self.colors[(i % len(self.colors))], 3)
 
 
 		# preparing masks for seam generation
@@ -694,28 +658,6 @@ class Infer:
 					).T for i in range(self.n_lines)]
 
 
-		# for i in range(self.n_lines):
-		# 	cv2.polylines(
-		# 		self.img,
-		# 		[
-		# 			upper_seams_xy[i]
-		# 		],
-		# 		False,
-		# 		self.colors[i],
-		# 		3,
-		# 	)
-
-		# for i in range(self.n_lines):
-		# 		cv2.polylines(
-		# 		self.img,
-		# 		[
-		# 			lower_seams_xy[i]
-		# 		],
-		# 		False,
-		# 		self.colors[i],
-		# 		3,
-		# 	)
-
 		img_ = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY).astype(np.uint8)   
 		_, otsu_threshold = cv2.threshold(img_, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU) 
 		kernel = np.ones((3, 3), dtype=np.uint8)  
@@ -732,31 +674,7 @@ class Infer:
 			lower_seam = lower_seams_xy[i] 
 			lower_seam = lower_seam[(lower_seam[:, 0] > min_x) & (lower_seam[:, 0] < max_x)] 
 			polygons.append(np.concatenate([upper_seam, np.flipud(lower_seam)], axis=0)) 
-
-		
-		# img_ = self.img.copy() 
-		# img_ = cv2.polylines(img_, polygons, True, (0, 255, 0), 2) 
-		# cv2.imwrite(f"final.jpg", img_) 
-		
-		# if self.name is not None:
-		# 	px = 1/plt.rcParams['figure.dpi']  # pixel in inches
-		# 	plt.figure(figsize=(self.img.shape[1]*px, self.img.shape[0]*px))
-		# 	plt.title(f"{self.n_lines}")
-		# 	plt.imshow(self.img)
-		# 	plt.grid(True)
-		# 	plt.savefig(f"outputs_{self.name}/output_{img_path.split('/')[-1]}")
-		# 	plt.close()
-
-		# else:
-		# 	px = 1/plt.rcParams['figure.dpi']  # pixel in inches
-		# 	plt.figure(figsize=(self.img.shape[1]*px, self.img.shape[0]*px))
-		# 	plt.title(f"{self.n_lines}")
-		# 	plt.imshow(self.img)
-		# 	plt.grid(True)
-		# 	plt.savefig(f"output_{img_path.split('/')[-1]}")
-		# 	plt.close()
-
-		return scribbles, polygons, img_
+		return scribbles, polygons, self.global_heat_map
 	
 
 
@@ -848,47 +766,3 @@ class Infer:
 			new_scribbles.append(np.stack((pts_x, pts_y), axis=-1))
 		
 		self.scribbles = new_scribbles
-
-
-	# def compute_scores(self, imgs_path, name):
-	# 	self.imgs_path = imgs_path
-	# 	self.name = name
-	# 	self.prepare_folders()
-	# 	self.load_json()
-
-	# 	self.result_json = []
-
-
-	# 	print(f"starting iterations...")
-	# 	# for img_name in tqdm(os.listdir(f"{imgs_path}")):
-	# 	for idx, inst in enumerate(self.json_data):
-	# 		img_name = inst["imgPath"].split("/")[-1]
-
-	# 		print(f"doing {img_name}")
-
-	# 		# loading the images
-	# 		img_path = self.imgs_path + img_name
-
-	# 		output = self.process_image(img_path)
-
-	# 		if output is False or output is None:
-	# 			continue
-
-	# 		upper_seams, lower_seams = output
-
-	# 		self.result_json.append({
-	# 			"imgPath": inst["imgPath"],
-	# 			"gdPolygons": inst["gdPolygons"],
-	# 			"scribbles": self.scribbles,
-	# 			"upper_seams": upper_seams,
-	# 			"lower_seams": lower_seams,
-	# 		})
-
-		
-	# 	# with open(f"{DATASET}_RESULT.pkl", "wb") as f:
-	# 	# 	pickle.dump(self.result_json, f)
-
-		
-# pi = Infer()
-# # pi.compute_scores(f"{DATASET}/{DATASET}_Test/images/", f"{DATASET}")
-# pi.process_image("malayalam.webp")  

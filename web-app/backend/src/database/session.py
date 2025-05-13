@@ -20,7 +20,7 @@ SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL
 
 # CREATE DATABASE ENGINE & SESSION
 try:
-    engine = create_engine(SQLALCHEMY_DATABASE_URL, )
+    engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_recycle=3600)
     logger.info("Database Engine created successfully.")
 except Exception as e:
     logger.error(f"Error creating database engine: {e}", exc_info=True)

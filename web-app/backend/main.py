@@ -32,7 +32,10 @@ app = FastAPI(
     version=config('PROJECT_VERSION'), 
     openapi_url=f"{config('API_V1_STR')}/openapi.json", 
     description=config('PROJECT_DESCRIPTION'), 
-    lifespan=lifespan
+    lifespan=lifespan, 
+    swagger_ui_parameters={
+        "syntaxHighlight": False
+    }
 )
 
 # --- API Routers ---

@@ -2,3 +2,5 @@
 *.ckpt
 *.log
 *__pycache__
+store/
+web-app/backend/screenlog.0

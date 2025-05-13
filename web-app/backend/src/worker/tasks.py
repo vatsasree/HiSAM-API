@@ -12,6 +12,7 @@ from src.database.session import get_standalone_session # Use standalone session
 from src.database import crud, models, schemas
 from decouple import config
 import torch
+import cv2
 
 logger = logging.getLogger(config('LOGGER_NAME') + ".tasks") # Specific logger for tasks
 celery_logger = get_task_logger(__name__)
@@ -106,7 +107,10 @@ def process_image_task(self, doc_id: int):
         # Note: model.process_image returns scribbles, polygons, processed_image (a numpy array)
         # from src.ml_models.LineTR.infer_new import Infer
         # inference_model2 = Infer()
-        scribbles, polygons, processed_image_np = inference_model.process_image(str(image_path))
+        scribbles, polygons, heatmap = inference_model.process_image(str(image_path))
+        binary_map_save_path = Path(config('PROCESSED_IMGS_DIR')) / db_doc.doc_path
+        binary_map_save_path.parent.mkdir(parents=True, exist_ok=True)
+        cv2.imwrite(binary_map_save_path, heatmap)
         logger.info(f"{task_id_str} Inference completed.")
         
         # === Format the results for DB output column ===
@@ -114,8 +118,8 @@ def process_image_task(self, doc_id: int):
         output_data = {
             # Convert numpy arrays to lists for JSON serialization
             "polygons": [p.tolist() for p in polygons] if polygons is not None else [],
-            # "scribbles": [s.tolist() for s in scribbles] if scribbles is not None else [],
-            # "processed_image_relative_path": processed_image_output_path, # Store path if saved
+            "scribbles": [s.tolist() for s in scribbles] if scribbles is not None else [],
+            "binary_map_path": str(binary_map_save_path), # Store path if saved
             # "lines_detected": len(polygons) if polygons is not None else 0
         }
         output_json = json.dumps(output_data)
@@ -180,11 +184,19 @@ def process_image_task(self, doc_id: int):
         # Use Celery's retry mechanism for transient errors
         try:
             # self.retry(exc=e) # Pass exception to retry
-            # For this example, let's just mark as failed without retry
-             logger.warning(f"[Task ID: {self.request.id}] Task for doc ID {doc_id} failed permanently after error.")
-             return {"status": "FAILED", "error": str(e)}
-        except Exception as retry_exc: # Catch potential MaxRetriesExceededError if retry is used
+            logger.warning(f"[Task ID: {self.request.id}] Task for doc ID {doc_id} retrying after error.")
+            raise self.retry(exc=e, countdown=5)
+        except self.MaxRetriesExceededError:
+            logger.error(f"[Task ID: {self.request.id}] Max retries exceeded for doc ID {doc_id}")
+            crud.update_document_status_and_result(
+                session, doc_id=doc_id, status=models.JobStatus.FAILED, error_message='Max retries exceeded.' # str(e)
+            )
+            return {"status": "FAILED", "error": f"Failed after retries: {str(e)}"}
+        except Exception as retry_exc:
             logger.error(f"[Task ID: {self.request.id}] Task for doc ID {doc_id} failed after retries: {retry_exc}")
+            crud.update_document_status_and_result(
+                session, doc_id=doc_id, status=models.JobStatus.FAILED, error_message='Failed after retries.' # str(e)
+            )
             return {"status": "FAILED", "error": f"Failed after retries: {str(e)}"}
 
     finally:
@@ -262,7 +274,7 @@ def check_and_update_job_status(session: Session, job_id_bytes: bytes):
 
 
 """"
-celery -A src.worker.celery_app worker --loglevel=INFO -Q image_processing_queue -c 12 —pool=gevent
+celery -A src.worker.celery_app worker --loglevel=INFO -Q image_processing_queue -c 4 —pool=gevent
 
 Have to use the spawing method as gevent.
 Reason - https://stackoverflow.com/questions/45459205/keras-predict-not-returning-inside-celery-task

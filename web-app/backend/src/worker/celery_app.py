@@ -22,10 +22,20 @@ celery_app.conf.update(
     accept_content=["json"],       # Accept only JSON content
     timezone="UTC",                # Use UTC timezone
     enable_utc=True,
-    # task_track_started=True,       # Track when tasks start execution (useful for monitoring)
+    task_track_started=True,       # Track when tasks start execution (useful for monitoring)
     # worker_prefetch_multiplier=1,  # Process one task at a time (good for long-running tasks like I/O bound or ML)
-    # task_acks_late=True,           # Acknowledge task only after it completes (or fails)
+    task_acks_late=True,           # Acknowledge task only after it completes (or fails)
     # broker_connection_retry_on_startup=True, # Retry connection on startup
+    broker_connection_retry_on_startup=True,
+    broker_transport_options={
+        'visibility_timeout': 3600,  # 1 hour task lock
+        'retry_policy': {
+            'max_retries': 5,
+            'interval_start': 0,
+            'interval_step': 0.2,
+            'interval_max': 0.5,
+        }
+    }
 )
 
 logger.info(f"Celery app initialized. Broker: {config('CELERY_BROKER_URL')}, Backend: {config('CELERY_RESULT_BACKEND')}")
