@@ -8,7 +8,8 @@ import os
 import sys
 # Add project root to sys.path to allow imports like 'from src.core...'
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
+print(project_root)
+sys.path.insert(0, '/data3/amal.joseph/template_api/web-app/backend/')
 
 # from src.core.config import settings # Load settings first
 from decouple import config
@@ -17,7 +18,6 @@ from src.database.session import get_standalone_session
 from src.database import crud, schemas, models
 from src.core.security import get_password_hash # We need this if CRUD doesn't handle hashing
 
-# Configure logging for the script
 # import logging.config
 # logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(config('LOGGER_NAME') + ".scripts") # Specific logger

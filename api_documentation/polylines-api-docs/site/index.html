@@ -85,7 +85,7 @@
                 <h1 id="polylines-api">Polylines API</h1>
 <p>Polyline API can be used to extract precise polygon boundary for text-lines in documents.<br />
 <img alt="API Version" src="https://img.shields.io/badge/version-1.1-blue" /><br />
-<strong>Last Updated</strong>: May 13, 2025</p>
+<strong>Last Updated</strong>: May 23, 2025</p>
 <h2 id="table-of-contents">Table of Contents</h2>
 <ul>
 <li><a href="#authentication">Authentication</a></li>
@@ -98,7 +98,7 @@
 <h2 id="authentication">Authentication</h2>
 <p>All requests must include a valid <code>X-API-Token</code> in the headers.<br />
 To obtain an API key, please contact: <a href="mailto:ravi.kiran@iiit.ac.in">ravi.kiran@iiit.ac.in</a></p>
-<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812"><strong>Github Gist of Python scripts to use Polylines API</strong></a></p>
+<p><a href="https://gist.github.com/amaljoseph/f366668032f7f586dc1001d0874e5e89"><strong>Github Gist of Python scripts to use Polylines API</strong></a></p>
 <h2 id="endpoints">Endpoints</h2>
 <ul>
 <li><code>/polylines/process</code> - Submit a job for processing.</li>
@@ -138,10 +138,11 @@ Supported file types are <code>.jpg, .jpeg, .png, .pdf</code>  </p>
   &quot;document_count&quot;: 2
 }
 </code></pre>
-<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812#file-submit_job-py"><strong>Sample Python script to submit a job</strong></a><br />
+<p><a href="https://gist.github.com/amaljoseph/f366668032f7f586dc1001d0874e5e89#file-submit_job-py"><strong>Sample Python script to submit a job</strong></a><br />
 <em>Usage</em>:<br />
 <code>python submit_job.py --input-dir /path/to</code> - To submit a job of documents from a directory.<br />
-<code>python submit_job.py --files /path/to/file1.jpg /path/to/file2.pdf</code> - To submit a job with a list of file paths.  </p>
+<code>python submit_job.py --files /path/to/file1.jpg /path/to/file2.pdf</code> - To submit a job with a list of file paths.<br />
+<code>python submit_job.py --url https://sample.com/pdf/file.pdf</code> - To submit a job using a pdf url.   </p>
 <h2 id="polylinesstatusjob_id">/polylines/status/{job_id}</h2>
 <p>You can check the status of a job with its job_id (uuid).<br />
 <strong><em>Parameters</em></strong>    </p>
@@ -181,7 +182,7 @@ Supported file types are <code>.jpg, .jpeg, .png, .pdf</code>  </p>
   ]
 }
 </code></pre>
-<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812#file-check_job_status-py"><strong>Sample Python script to check job status</strong></a><br />
+<p><a href="https://gist.github.com/amaljoseph/f366668032f7f586dc1001d0874e5e89#file-check_job_status-py"><strong>Sample Python script to check job status</strong></a><br />
 <em>Usage</em>: <code>python check_job_status.py --job-id JOB_ID</code></p>
 <h2 id="polylinesstatusteijob_id">/polylines/status/tei/{job_id}</h2>
 <p>You can check get the results of the job using the job_id (uuid) as XML in TEI-P5 format.  <br />
@@ -263,20 +264,20 @@ Refer '<graphic url="page1.jpg" width="1000" height="1400"/>' tag in the sample 
     binaryObject: binarized image as binary object.
 </code></pre>
 <p><strong>Note:</strong> By default you will get access to only the predicted polygons. For other response objects like scribbles and binarized image, contact the admin.  </p>
-<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812#file-check_job_status-py"><strong>Sample Python script to get the XML result</strong></a><br />
+<p><a href="https://gist.github.com/amaljoseph/f366668032f7f586dc1001d0874e5e89#file-check_job_status-py"><strong>Sample Python script to get the XML result</strong></a><br />
 <em>Usage</em>: <code>python check_job_status.py --job-id JOB_ID --save-xml-to /path/to/</code><br />
 <em>--save-xml-to argument would save the XML response to the provided location</em></p>
 <h2 id="extras">Extras</h2>
-<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812#file-overlay_polygons_from_tei-py"><strong>Python script to overlay the polygons using the TEI-P5 xml file</strong></a><br />
+<p><a href="https://gist.github.com/amaljoseph/f366668032f7f586dc1001d0874e5e89#file-overlay_polygons_from_tei-py"><strong>Python script to overlay the polygons using the TEI-P5 xml file</strong></a><br />
 Overlay detected text-line polygons on original images.<br />
 <em>Usage</em>: <code>python overlay_polygons_from_tei.py --docs_dir /path/to/documents --xml_path /path/to/tei.xml --output_dir /path/to/</code></p>
-<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812#file-overlay_scribbles_from_tei-py"><strong>Python script to overlay the scribbles using the TEI-P5 xml file</strong></a><br />
+<p><a href="https://gist.github.com/amaljoseph/f366668032f7f586dc1001d0874e5e89#file-overlay_scribbles_from_tei-py"><strong>Python script to overlay the scribbles using the TEI-P5 xml file</strong></a><br />
 Overlay detected text-line scribbles on original images.<br />
 <em>Usage</em>: <code>python overlay_scribbles_from_tei.py --docs_dir /path/to/documents --xml_path /path/to/tei.xml --output_dir /path/to/</code>  </p>
-<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812#file-extract_textlines_from_tei-py"><strong>Python script to crop the text-lines from images the TEI-P5 xml file</strong></a><br />
+<p><a href="https://gist.github.com/amaljoseph/f366668032f7f586dc1001d0874e5e89#file-extract_textlines_from_tei-py"><strong>Python script to crop the text-lines from images the TEI-P5 xml file</strong></a><br />
 Crop the individual text-lines from the images.<br />
 <em>Usage</em>: <code>python extract_textlines_from_tei.py --docs_dir /path/to/documents --xml_path /path/to/tei.xml --output_dir /path/to/</code></p>
-<p><a href="https://gist.github.com/amaljoseph/949488322fbef2bd350f7997342f2812#file-save_binary_images-py"><strong>Python script to save the binary map  using the TEI-P5 xml file</strong></a><br />
+<p><a href="https://gist.github.com/amaljoseph/f366668032f7f586dc1001d0874e5e89#file-save_binary_images-py"><strong>Python script to save the binary map  using the TEI-P5 xml file</strong></a><br />
 Save the binary map generated by the api.<br />
 <em>Usage</em>: <code>python save_binary_images.py --xml_path /path/to/file.xml --output_dir /path/to/</code></p>
 <!-- 
@@ -326,5 +327,5 @@ Save the binary map generated by the api.<br />
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2025-05-13 07:36:22.741288+00:00
+Build Date UTC : 2025-05-23 09:27:10.989334+00:00
 -->

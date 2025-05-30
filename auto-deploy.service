@@ -1,0 +1,13 @@
+[Unit]
+Description=Auto Deployment for LineTR WebApp
+After=network.target docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/data3/amal.joseph/template_api/auto-deploy.sh
+
+[Install]
+WantedBy=multi-user.target
+
+# saved at -  /etc/systemd/system/auto-deploy.service
