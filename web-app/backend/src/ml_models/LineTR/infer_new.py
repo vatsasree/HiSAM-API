@@ -34,7 +34,8 @@ LINETR_BINARIZER_CHECKPOINT = "/data3/amal.joseph/template_api/store/model_files
 class Infer:
 	def __init__(self):
 		self.contexts = np.array([6, 7, 8], dtype=np.int32)
-		self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+		# self.device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+		self.device = "cuda:0"
 		self.model = TLDr_Trainer.load_from_checkpoint(LINETR_CHECKPOINT).to(self.device)
 		self.bin_model = TLDr_BinDecoder.load_from_checkpoint(
 			LINETR_BINARIZER_CHECKPOINT, encoder=self.model.encoder

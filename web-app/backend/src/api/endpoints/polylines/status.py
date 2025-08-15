@@ -139,7 +139,9 @@ def convert_to_tei_p5_format(db: Session, job_id_bytes: bytes, allowed_output_ty
     db_docs = crud.get_job_document_statuses(db=db, job_id_bytes=job_id_bytes)
     processed_pages_data = []
 
+    print("\n\n")
     for i, doc_record in enumerate(db_docs):
+        print(f"{doc_record.doc_path.split('/')[-1]}")
         page_data: Dict[str, Any] = {
             'image_name': doc_record.doc_path.split('/')[-1],
             'width': doc_record.width,
@@ -191,9 +193,11 @@ def convert_to_tei_p5_format(db: Session, job_id_bytes: bytes, allowed_output_ty
         # Get path for <binaryObject>
         if "response_binary_map" in allowed_output_types:
             page_data['binary_image_path'] = output_dict.get('binary_map_path')
-
+        print(f'POLYGONS = {page_data.get("polygons")}')
         processed_pages_data.append(page_data)
-
+    print(f"{len(processed_pages_data)} no of results found.")
+    print(processed_pages_data[-1]['polygons'])
+    print("\n\n")
     xml_data = convert_to_tei(processed_pages_data, allowed_output_types)
     return xml_data
 
@@ -224,6 +228,7 @@ def convert_to_tei(processed_pages_data, allowed_output_types):
     facs = ET.SubElement(tei, 'facsimile')
 
     for page in processed_pages_data:
+        print(page.get('image_name'))
         # derive xml:id from image_name (without extension)
         page_id = os.path.splitext(page['image_name'])[0]
         surface_attrib = {'xml:id': page_id}
