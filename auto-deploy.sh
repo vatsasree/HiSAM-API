@@ -16,7 +16,9 @@ cd /data3/amal.joseph/template_api/web-app/backend
 echo "Changed directory to backend"
 
 # === Restart Docker containers ===
+# redis
 docker restart 1e7fe1f3c8ebf98b560fd4884f0a55cb4df49e1c617291079cc65150a7be69c1
+# mysql
 docker restart 8b70362cdf5b57113437400c46ef28ff73cc14435550cefef16013a9eab646cd
 echo "Restarted Docker containers"
 

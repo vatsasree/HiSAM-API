@@ -25,6 +25,7 @@
 [!!!! IMPORTANT]
 [TODO] Document fails if there are no lines detected.
 [TODO] Make the web-app dockerized
+[TODO] Health check of celery and webapp - restart if down.
 
 
 curl -X GET "https://skeleton.iiit.ac.in/api/v1/polylines/status/fa4965c8-eee8-4a93-919d-4b9da6ddb4a1" \
