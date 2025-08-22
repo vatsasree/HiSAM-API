@@ -19,22 +19,18 @@ celery_logger = get_task_logger(__name__)
 
 
 ## --- Import your inference code ---
-print('\n\n TASKS FILE PYTHON \n')
 try:
     from src.ml_models.LineTR.infer_new import Infer
     MODEL_LOADED = True
     # --- Initialize the Model ONCE per worker process ---
     inference_model = Infer()
-    print('inference model loaded')
     logger.info("Inference model loaded successfully in worker process.")
 except ImportError as e:
-    print('inference model load error 1')
     logger.error(f"Failed to import inference code: {e}", exc_info=True)
     MODEL_LOADED = False
     inference_model = None # Ensure it's defined even on failure
 except Exception as e:
     # Catch potential errors during model initialization (e.g., file not found, GPU issue)
-    print('inference model load error 1')
     logger.error(f"Failed to initialize inference model: {e}", exc_info=True)
     MODEL_LOADED = False
     inference_model = None
@@ -73,7 +69,7 @@ def process_image_task(self, doc_id: int):
             # No retry needed if the document doesn't exist
             return {"status": "FAILED", "error": "Document not found"}
 
-        job_id_uuid = db_doc.job_id # Get UUID for logging
+        job_id_uuid = db_doc.job_id
         logger.info(f"[Task ID: {self.request.id}] Found Document ID {doc_id} for Job ID {job_id_uuid}")
 
         # --- Check if already processed or failed ---
@@ -99,7 +95,7 @@ def process_image_task(self, doc_id: int):
             crud.update_document_status_and_result(
                 session, doc_id=doc_id, status=models.JobStatus.FAILED, error_message="Image file not found"
             )
-            check_and_update_job_status(session, db_doc.job_id) # Update parent job status
+            status = check_and_update_job_status(session, db_doc.job_id) # Update parent job status
             raise FileNotFoundError(f"Image file not found: {image_path}") # Raise error to go to except block
 
         # === Call your inference code ===
@@ -134,7 +130,7 @@ def process_image_task(self, doc_id: int):
         #      crud.update_document_status_and_result(
         #          session, doc_id=doc_id, status=models.JobStatus.FAILED, error_message="Image file not found"
         #      )
-        #      check_and_update_job_status(session, db_doc.job_id) # Update parent job status
+        #      status = check_and_update_job_status(session, db_doc.job_id) # Update parent job status
         #      return {"status": "FAILED", "error": "Image file not found"}
 
         # # *** Replace this sleep with actual image processing code ***
@@ -159,7 +155,11 @@ def process_image_task(self, doc_id: int):
         logger.info(f"[Task ID: {self.request.id}] Document ID {doc_id} processing COMPLETED.")
 
         # --- 5. Check and Update Parent Job Status ---
-        check_and_update_job_status(session, db_doc.job_id)
+        status = check_and_update_job_status(session, db_doc.job_id)
+        if not status:
+            time.sleep(60)
+            status = check_and_update_job_status(session, db_doc.job_id)
+            
 
         return {"status": "COMPLETED", "doc_id": doc_id, "output_preview": output_data.get("result")}
 
@@ -176,7 +176,7 @@ def process_image_task(self, doc_id: int):
                  )
                  logger.info(f"[Task ID: {self.request.id}] Document ID {doc_id} status set to FAILED.")
                  # Update parent job status after marking doc as failed
-                 check_and_update_job_status(session, db_doc.job_id)
+                 status = check_and_update_job_status(session, db_doc.job_id)
              except Exception as update_err:
                  logger.error(f"[Task ID: {self.request.id}] CRITICAL: Failed to update document {doc_id} status to FAILED after error: {update_err}", exc_info=True)
                  session.rollback() # Rollback the status update attempt
@@ -226,27 +226,34 @@ def check_and_update_job_status(session: Session, job_id_bytes: bytes):
         if not document_statuses:
             logger.warning(f"No documents found for Job ID: {job_uuid} during status check. Cannot update job status.")
             return
-        
-        final_job_status = None
-        if all(status.status == models.JobStatus.COMPLETED for status in document_statuses):
-            final_job_status = models.JobStatus.COMPLETED
-        elif all(status.status == models.JobStatus.FAILED for status in document_statuses):
-            final_job_status = models.JobStatus.FAILED
-        elif any(status.status == models.JobStatus.FAILED for status in document_statuses):
-            # If some documents failed but others succeeded, mark as COMPLETED_WITH_ERRORS
-            final_job_status = models.JobStatus.COMPLETED_WITH_ERRORS
+                # Check if all documents have reached a final state (COMPLETED or FAILED)
+        all_docs_finished = all(status.status in [models.JobStatus.COMPLETED, models.JobStatus.FAILED] 
+                               for status in document_statuses)
+        if all_docs_finished:
+            final_job_status = None
+            if all(status.status == models.JobStatus.COMPLETED for status in document_statuses):
+                final_job_status = models.JobStatus.COMPLETED
+            elif all(status.status == models.JobStatus.FAILED for status in document_statuses):
+                final_job_status = models.JobStatus.FAILED
+            elif any(status.status == models.JobStatus.FAILED for status in document_statuses):
+                # If some documents failed but others succeeded, mark as COMPLETED_WITH_ERRORS
+                final_job_status = models.JobStatus.COMPLETED_WITH_ERRORS
 
-        if final_job_status:
-            db_job = crud.get_job_by_job_id(session, job_id_bytes=job_id_bytes)
-            if db_job and db_job.status != final_job_status:
-                logger.info(f"Updating Job ID {job_uuid} status to {final_job_status}")
-                crud.update_job_status(session, job_id_bytes=job_id_bytes, status=final_job_status)
-            elif not db_job:
-                logger.error(f"Job ID {job_uuid} (bytes: {job_id_bytes.hex()}) not found during final status update check.")
+            if final_job_status:
+                db_job = crud.get_job_by_job_id(session, job_id_bytes=job_id_bytes)
+                if db_job and db_job.status != final_job_status:
+                    logger.info(f"Updating Job ID {job_uuid} status to {final_job_status}")
+                    crud.update_job_status(session, job_id_bytes=job_id_bytes, status=final_job_status)
+                elif not db_job:
+                    logger.error(f"Job ID {job_uuid} (bytes: {job_id_bytes.hex()}) not found during final status update check.")
+            return True
+        else:
+            return False
     except Exception as e:
         # Log error but don't let it crash the original task flow
         logger.error(f"Error checking/updating overall job status for job_id_bytes {job_id_bytes.hex()}: {e}", exc_info=True)
         session.rollback() # Rollback potential failed job status update
+        return False
 
 
 # Example of a scheduled cleanup task (add to celery_app includes and beat_schedule if used)

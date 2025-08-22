@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Column, ForeignKey, Boolean, Text, DateTime, Enum as SQLEnum, Table
+from sqlalchemy import Integer, String, Column, ForeignKey, Boolean, Text, DateTime, Enum as SQLEnum, Table, Float
 from sqlalchemy.dialects.mysql import BINARY, LONGTEXT, SMALLINT
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.sql import func
@@ -88,6 +88,7 @@ class DocumentRecord(Base):
     doc_path = Column(String(512), nullable=False)
     width = Column(SMALLINT, nullable=True)
     height = Column(SMALLINT, nullable=True)
+    rescale_factor = Column(Float, nullable=False, default=1.0)
     output = Column(LONGTEXT, nullable=True)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

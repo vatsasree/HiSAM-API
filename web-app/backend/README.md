@@ -2,9 +2,9 @@
 
 [ --- EASY --- ] 
 [TODO] add log to jobs even if file error is there. and add reason
-[TODO] add autorestart on server restart
 [TODO] Process PDF in chunks, before saving it to disk.
 [TODO] Handle when a job fails before adding to db  - eg: wrong file type, we should still add them to the db and mention, this happened and job failed.
+
 
 
 [ --- HARD --- ]
@@ -22,8 +22,9 @@
 [TODO] image save path in store should be uuid, and the path for user seperate in db
 
 
-
-
+[!!!! IMPORTANT]
+[TODO] Document fails if there are no lines detected.
+[TODO] Make the web-app dockerized
 
 
 curl -X GET "https://skeleton.iiit.ac.in/api/v1/polylines/status/fa4965c8-eee8-4a93-919d-4b9da6ddb4a1" \
@@ -38,3 +39,8 @@ alembic upgrade head
 ```
 
 changes to api docs and scripts - check notepad
+
+
+# Different Logs
+/data3/amal.joseph/template_api/store/log_files/parsing_records.log
+/data3/amal.joseph/template_api/store/log_files/celery_log.log

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from src.api import deps
 from src.database import crud, schemas, models # Import models for type hinting
+from src.worker.tasks import check_and_update_job_status
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -32,7 +33,11 @@ async def get_job_status(
     Fetches the job details from the database based on the provided job_id.
     """
     logger.info(f"Status requested for job ID: {job_id} by token ID: {current_token.token_id}")
-    
+    # check if job is completed really and update it if completed_with_errors
+    # sometimes, if job is completed with some failures, the status was not updated as COMPLETED_WITH_ERRORS
+    status = check_and_update_job_status(db, job_id_bytes=job_id.bytes)
+    if status:
+        logger.info(f"For Job {job_id}, status updated.")
     # Fetch job details
     db_job = crud.get_job_by_job_id(db=db, job_id_bytes=job_id.bytes)
     
@@ -85,8 +90,12 @@ async def get_job_status(
     Fetches the job details from the database based on the provided job_id.
     """
     logger.info(f"Status requested for job ID: {job_id} by token ID: {current_token.token_id}")
+    # check if job is completed really and update it if completed_with_errors
+    # sometimes, if job is completed with some failures, the status was not updated as COMPLETED_WITH_ERRORS
+    status = check_and_update_job_status(db, job_id_bytes=job_id.bytes)
+    if status:
+        logger.info(f"For Job {job_id}, status updated.")
     db_job = crud.get_job_by_job_id(db=db, job_id_bytes=job_id.bytes)
-
     if not db_job:
         logger.warning(f"Job ID not found: {job_id}")
         raise HTTPException(
@@ -134,6 +143,15 @@ def get_allowed_output_types(db: Session, token_id: int) -> List[str]:
     return [p.name for p in priv_objs]
 
 
+def scale_annotations_with_rescaling_factor(annotation, rescaling_factorm):
+    scaled_annotation = []
+    for poly in annotation:
+        scaled_poly = []
+        for point in poly:
+            scaled_point = (int(point[0] * rescaling_factorm), int(point[1] * rescaling_factorm))
+            scaled_poly.append(scaled_point)
+        scaled_annotation.append(scaled_poly)
+    return scaled_annotation
 
 def convert_to_tei_p5_format(db: Session, job_id_bytes: bytes, allowed_output_types: List[str]):
     db_docs = crud.get_job_document_statuses(db=db, job_id_bytes=job_id_bytes)
@@ -141,11 +159,11 @@ def convert_to_tei_p5_format(db: Session, job_id_bytes: bytes, allowed_output_ty
 
     print("\n\n")
     for i, doc_record in enumerate(db_docs):
-        print(f"{doc_record.doc_path.split('/')[-1]}")
         page_data: Dict[str, Any] = {
             'image_name': doc_record.doc_path.split('/')[-1],
             'width': doc_record.width,
             'height': doc_record.height,
+            'rescale_factor': doc_record.rescale_factor,
             'polygons': [],
             'paths': [],
             'binary_image_path': None
@@ -167,7 +185,8 @@ def convert_to_tei_p5_format(db: Session, job_id_bytes: bytes, allowed_output_ty
         if "response_polygon" in allowed_output_types:
             raw_polygons = output_dict.get('polygons', [])
             if raw_polygons:
-                for poly_idx, line_points in enumerate(raw_polygons):
+                raw_polygons_scaled = scale_annotations_with_rescaling_factor(raw_polygons, doc_record.rescale_factor)
+                for poly_idx, line_points in enumerate(raw_polygons_scaled):
                     try:
                         page_data['polygons'].append({
                             "id": f"line{poly_idx+1}",
@@ -181,7 +200,8 @@ def convert_to_tei_p5_format(db: Session, job_id_bytes: bytes, allowed_output_ty
         if "response_scribble" in allowed_output_types:
             raw_scribbles = output_dict.get('scribbles', [])
             if raw_scribbles:
-                for scribble_idx, path_points in enumerate(raw_scribbles):
+                raw_scribbles_scaled = scale_annotations_with_rescaling_factor(raw_scribbles, doc_record.rescale_factor)
+                for scribble_idx, path_points in enumerate(raw_scribbles_scaled):
                     try:
                         page_data['paths'].append({
                             "id": f"path{scribble_idx+1}",
@@ -193,7 +213,6 @@ def convert_to_tei_p5_format(db: Session, job_id_bytes: bytes, allowed_output_ty
         # Get path for <binaryObject>
         if "response_binary_map" in allowed_output_types:
             page_data['binary_image_path'] = output_dict.get('binary_map_path')
-        print(f'POLYGONS = {page_data.get("polygons")}')
         processed_pages_data.append(page_data)
     print(f"{len(processed_pages_data)} no of results found.")
     print(processed_pages_data[-1]['polygons'])

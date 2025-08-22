@@ -116,37 +116,7 @@ async def submit_processing_job(
             saved_file_path, doc_create_schema = save_file(job_uuid=job_uuid, file_name=file.filename, image=file.file)
             saved_file_paths.append(saved_file_path)
             doc_create_schemas.append(doc_create_schema)
-            pass
-            # # Sanitize filename (important for security)
-            # safe_filename = secure_filename(file.filename) # Use a utility for this
-            # if not safe_filename:
-            #     safe_filename = f"upload_{uuid4().hex}" # Generate safe name if original is bad
-
-            # relative_path = Path(str(job_uuid)) / safe_filename
-            # destination_path = Path(config('UPLOAD_DIR')) / relative_path
-
-            # try:
-            #     logger.debug(f"Saving file '{file.filename}' to '{destination_path}'")
-            #     with open(destination_path, "wb") as buffer:
-            #         shutil.copyfileobj(file.file, buffer)
-            #     saved_file_paths.append(str(destination_path)) # Store full path temporarily if needed
-            #     # Prepare schema for DB creation, store relative path
-            #     width, height = imagesize.get(destination_path)
-            #     doc_create_schemas.append(schemas.DocumentRecordBase(
-            #         doc_path=str(relative_path), 
-            #         width=width, 
-            #         height=height
-            #     ))
-            # except Exception as e:
-            #     logger.error(f"Failed to save uploaded file '{file.filename}': {e}", exc_info=True)
-            #     # Clean up potentially partially saved files and directory
-            #     shutil.rmtree(job_upload_dir, ignore_errors=True)
-            #     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not save file: {safe_filename}")
-            # finally:
-            #     await file.close() # Ensure file pointer is closed
-        print("\n\n FILE ONE COMPLETED\n")
         await file.close() # Ensure file pointer is closed
-    print("\n\n ALL FILES COMPLETED\n")
     if not doc_create_schemas:
          # Should not happen if validation passed, but good safety check
          shutil.rmtree(job_upload_dir, ignore_errors=True)
@@ -261,6 +231,17 @@ def secure_filename(filename: str) -> str:
 
 import PIL
 
+def check_and_convert_to_safe_dimensions(image, width, height, file_name):
+    SAFE_WIDTH, SAFE_HEIGHT = 2000, 2000
+    rescale_factor = 1.0
+    if width > SAFE_WIDTH or height > SAFE_HEIGHT:
+        rescale_factor = min(SAFE_WIDTH / width, SAFE_HEIGHT / height)
+        new_width = int(width * rescale_factor)
+        new_height = int(height * rescale_factor)
+        logger.info(f"Rescaling {file_name} from {width}x{height} to {new_width}x{new_height}")
+        image = image.resize((new_width, new_height), PIL.Image.LANCZOS)
+    return image, rescale_factor
+
 def save_file(job_uuid, file_name, image):
     job_upload_dir = Path(config('UPLOAD_DIR')) / str(job_uuid)
     
@@ -271,17 +252,19 @@ def save_file(job_uuid, file_name, image):
 
     relative_path = Path(str(job_uuid)) / safe_filename
     destination_path = Path(config('UPLOAD_DIR')) / relative_path
-
+    
     try:
         logger.debug(f"Saving file '{file_name}' to '{destination_path}'")
         print("\n\n'Going to Save Image'\n\n")
-        if isinstance(image, PIL.Image.Image):
-            print("\n\n'PIL IMAGE'\n\n")
-            image.save(destination_path, 'PNG')
-            print("\n\n'PIL IMAGE saved'\n\n")
-        else:
-            with open(destination_path, "wb") as buffer:
-                shutil.copyfileobj(image, buffer)
+        if not isinstance(image, PIL.Image.Image):
+            image = PIL.Image.open(image)
+            
+        width, height = image.size
+        print(f"Image dimensions: {width} x {height}")
+        image, rescale_factor = check_and_convert_to_safe_dimensions(image, width, height, file_name)
+        image.save(destination_path, 'PNG')
+        
+        
                 
         print("\n\n'Image Save completed'\n\n")
         saved_file_path = str(destination_path) # Store full path temporarily if needed
@@ -295,10 +278,8 @@ def save_file(job_uuid, file_name, image):
         )
         return saved_file_path, doc_create_schema
     except Exception as e:
-        print(f'\n\n{file_name}\n\n')
-        logger.error(f"Failed to save uploaded file '{image}': {e}", exc_info=True)
+        print(f'\n\n{file_name} \t\t --- ')
+        logger.error(f"Failed to save uploaded file '{file_name}': {e}", exc_info=True)
         # Clean up potentially partially saved files and directory
         shutil.rmtree(job_upload_dir, ignore_errors=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not save file: {safe_filename}")
-
-    
