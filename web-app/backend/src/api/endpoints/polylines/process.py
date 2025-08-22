@@ -145,6 +145,7 @@ async def submit_processing_job(
                 doc_path=doc_schema.doc_path,
                 width=doc_schema.width, 
                 height=doc_schema.height,
+                rescale_factor=doc_schema.rescale_factor,
                 status=models.JobStatus.QUEUED
             )
             db_documents.append(db_doc)
@@ -238,7 +239,7 @@ def check_and_convert_to_safe_dimensions(image, width, height, file_name):
         rescale_factor = min(SAFE_WIDTH / width, SAFE_HEIGHT / height)
         new_width = int(width * rescale_factor)
         new_height = int(height * rescale_factor)
-        logger.info(f"Rescaling {file_name} from {width}x{height} to {new_width}x{new_height}")
+        logger.info(f"Rescaling {file_name} from {width}x{height} to {new_width}x{new_height} with rescale factor {rescale_factor:.2f}")
         image = image.resize((new_width, new_height), PIL.Image.LANCZOS)
     return image, rescale_factor
 
@@ -274,7 +275,8 @@ def save_file(job_uuid, file_name, image):
         doc_create_schema = schemas.DocumentRecordBase(
             doc_path=str(relative_path), 
             width=width, 
-            height=height
+            height=height, 
+            rescale_factor = rescale_factor
         )
         return saved_file_path, doc_create_schema
     except Exception as e:

@@ -143,12 +143,12 @@ def get_allowed_output_types(db: Session, token_id: int) -> List[str]:
     return [p.name for p in priv_objs]
 
 
-def scale_annotations_with_rescaling_factor(annotation, rescaling_factorm):
+def scale_annotations_with_rescaling_factor(annotation, rescale_factor):
     scaled_annotation = []
     for poly in annotation:
         scaled_poly = []
         for point in poly:
-            scaled_point = (int(point[0] * rescaling_factorm), int(point[1] * rescaling_factorm))
+            scaled_point = (int(point[0] / rescale_factor), int(point[1] / rescale_factor))
             scaled_poly.append(scaled_point)
         scaled_annotation.append(scaled_poly)
     return scaled_annotation

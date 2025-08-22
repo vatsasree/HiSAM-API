@@ -1,4 +1,5 @@
-from sqlalchemy import Integer, String, Column, ForeignKey, Boolean, Text, DateTime, Enum as SQLEnum, Table, Float
+from sqlalchemy import Integer, String, Column, ForeignKey, Boolean, Text, \
+    DateTime, Enum as SQLEnum, Table, Float
 from sqlalchemy.dialects.mysql import BINARY, LONGTEXT, SMALLINT
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.sql import func

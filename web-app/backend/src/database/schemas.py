@@ -82,6 +82,7 @@ class DocumentRecordBase(OrmBaseModel):
     doc_path: str
     width: Optional[int]
     height: Optional[int]
+    rescale_factor: Optional[float]
 
 class DocumentRecordCreate(DocumentRecordBase):
     pass
