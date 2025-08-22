@@ -13,6 +13,7 @@ from src.database import crud, models, schemas
 from decouple import config
 import torch
 import cv2
+import traceback
 
 logger = logging.getLogger(config('LOGGER_NAME') + ".tasks") # Specific logger for tasks
 celery_logger = get_task_logger(__name__)
@@ -104,6 +105,9 @@ def process_image_task(self, doc_id: int):
         # from src.ml_models.LineTR.infer_new import Infer
         # inference_model2 = Infer()
         scribbles, polygons, heatmap = inference_model.process_image(str(image_path))
+        # if len(scribbles) == 0:
+		# 	logger.info(f"No lines found for Task ID: {self.request.id}] Document ID {doc_id}.")
+        
         binary_map_save_path = Path(config('PROCESSED_IMGS_DIR')) / db_doc.doc_path
         binary_map_save_path.parent.mkdir(parents=True, exist_ok=True)
         cv2.imwrite(binary_map_save_path, heatmap)
@@ -119,34 +123,6 @@ def process_image_task(self, doc_id: int):
             # "lines_detected": len(polygons) if polygons is not None else 0
         }
         output_json = json.dumps(output_data)
-
-        # # --- 3. Simulate Image Processing ---
-        # # Construct the full path to the image file
-        # image_path = Path(config('UPLOAD_DIR')) / db_doc.doc_path
-        # logger.info(f"[Task ID: {self.request.id}] Simulating processing for file: {image_path}")
-
-        # if not image_path.exists():
-        #      logger.error(f"[Task ID: {self.request.id}] Image file not found at path: {image_path}. Marking as FAILED.")
-        #      crud.update_document_status_and_result(
-        #          session, doc_id=doc_id, status=models.JobStatus.FAILED, error_message="Image file not found"
-        #      )
-        #      status = check_and_update_job_status(session, db_doc.job_id) # Update parent job status
-        #      return {"status": "FAILED", "error": "Image file not found"}
-
-        # # *** Replace this sleep with actual image processing code ***
-        # time.sleep(2)
-        # # *** ---------------------------------------------------- ***
-
-        # # Simulate successful processing output (JSON string)
-        # output_data = {
-        #     "processed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        #     "file_path": str(db_doc.doc_path),
-        #     "result": "Simulated processing successful",
-        #     "dimensions": {"width": 640, "height": 480} # Example data
-        # }
-        # output_json = json.dumps(output_data)
-        # -------------------------------------------------------------------------------
-        
         
         # --- 4. Update Status to COMPLETED with results ---
         crud.update_document_status_and_result(
@@ -166,6 +142,8 @@ def process_image_task(self, doc_id: int):
     except Exception as e:
         torch.cuda.empty_cache()  # Clear GPU memory on failure
         logger.error(f"[Task ID: {self.request.id}] Error processing document ID {doc_id}: {e}", exc_info=True)
+        print(traceback.format_exc())
+        logger.error(traceback.format_exc())
         session.rollback() # Rollback any partial changes from this attempt
 
         if db_doc: # If we managed to fetch the document

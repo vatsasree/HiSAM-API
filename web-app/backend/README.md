@@ -23,7 +23,7 @@
 
 
 [!!!! IMPORTANT]
-[TODO] Document fails if there are no lines detected.
+[TODO] Document update status as fails if there are no lines detected.
 [TODO] Make the web-app dockerized
 [TODO] Health check of celery and webapp - restart if down.
 [TODO] Rescale the heatmap if needed.

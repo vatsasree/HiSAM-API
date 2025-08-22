@@ -87,8 +87,6 @@ async def submit_processing_job(
             )
 
         # If files are pdf, convert to images and 
-        
-        print('\n\n', type(file), '\n\n')
         if file.content_type == "application/pdf":
             pdf_path = job_upload_dir / file.filename
             pdf_name = Path(file.filename).stem
@@ -100,7 +98,7 @@ async def submit_processing_job(
             i = -1
             try:
                 images = convert_from_bytes(open(pdf_path, "rb").read(), use_cropbox=True)
-                print(f'TOTAL {len(images)} images.')
+                logger.info(f"Job_ID = {job_uuid} consists of {len(images)} images.")
                 for i, img in enumerate(images):
                     img_name = f"{pdf_name}_page_{str(i).zfill(4)}.jpg"
                     saved_file_path, doc_create_schema = save_file(job_uuid=job_uuid, file_name=img_name, image=img)
@@ -177,7 +175,6 @@ async def submit_processing_job(
                 args=[db_doc.doc_id],
                 queue='image_processing_queue' # Ensure task goes to the correct queue
             )
-            print('\n\n task send to process_image_task completed \n\n')
             task_ids.append(task.id)
             logger.info(f"Dispatched task {task.id} for document ID {db_doc.doc_id} (Job {job_uuid})")
         except Exception as e:
@@ -255,23 +252,16 @@ def save_file(job_uuid, file_name, image):
     destination_path = Path(config('UPLOAD_DIR')) / relative_path
     
     try:
-        logger.debug(f"Saving file '{file_name}' to '{destination_path}'")
-        print("\n\n'Going to Save Image'\n\n")
+        logger.info(f"Saving file '{file_name}' to '{destination_path}'")
         if not isinstance(image, PIL.Image.Image):
             image = PIL.Image.open(image)
-            
         width, height = image.size
-        print(f"Image dimensions: {width} x {height}")
         image, rescale_factor = check_and_convert_to_safe_dimensions(image, width, height, file_name)
         image.save(destination_path, 'PNG')
         
-        
-                
-        print("\n\n'Image Save completed'\n\n")
         saved_file_path = str(destination_path) # Store full path temporarily if needed
         # Prepare schema for DB creation, store relative path
-        width, height = imagesize.get(destination_path)
-        print(f"Dimensions = {width}, {height}")
+        
         doc_create_schema = schemas.DocumentRecordBase(
             doc_path=str(relative_path), 
             width=width, 
@@ -280,7 +270,6 @@ def save_file(job_uuid, file_name, image):
         )
         return saved_file_path, doc_create_schema
     except Exception as e:
-        print(f'\n\n{file_name} \t\t --- ')
         logger.error(f"Failed to save uploaded file '{file_name}': {e}", exc_info=True)
         # Clean up potentially partially saved files and directory
         shutil.rmtree(job_upload_dir, ignore_errors=True)

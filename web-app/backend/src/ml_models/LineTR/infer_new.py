@@ -602,13 +602,12 @@ class Infer:
 			new_global_canvas[pts_y, pts_x] = i + 1
 		self.global_canvas = new_global_canvas
 
-
-		# in case there are no predicted lines in the image
-		if len(scribbles) == 0:
-			return
 		
 
 		self.scribbles = scribbles
+		if len(self.scribbles) == 0:
+			print("NO LINES FOUND DURING INFERENCE")
+			return [], [], self.global_heat_map
 
 
 		# merging based on the reading order
