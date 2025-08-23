@@ -3,6 +3,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import traceback
 os.environ['TQDM_DISABLE']='True'
 from tqdm import tqdm
 import shutil
@@ -664,17 +665,37 @@ class Infer:
 		# kernel = np.ones((3, 3)) / 9 
 		otsu_threshold = 255 - cv2.dilate((255 - otsu_threshold), kernel, iterations=3) 
 		self.global_canvas[otsu_threshold == 255] = 0 
-		polygons = []  
+		# polygons = []  
+		# for i in range(self.n_lines): 
+		# 	line_pts_y, line_pts_x = np.where(self.global_canvas == i + 1)  
+		# 	min_x = np.min(line_pts_x) 
+		# 	max_x = np.max(line_pts_x) 
+		# 	upper_seam = upper_seams_xy[i] 
+		# 	upper_seam = upper_seam[(upper_seam[:, 0] > min_x) & (upper_seam[:, 0] < max_x)] 
+		# 	lower_seam = lower_seams_xy[i] 
+		# 	lower_seam = lower_seam[(lower_seam[:, 0] > min_x) & (lower_seam[:, 0] < max_x)] 
+		# 	polygons.append(np.concatenate([upper_seam, np.flipud(lower_seam)], axis=0)) 
+		# return scribbles, polygons, self.global_heat_map
+		updated_upper_seams_xy, updated_lower_seams_xy, updated_scribbles, updated_polygons = [], [], [], []
 		for i in range(self.n_lines): 
-			line_pts_y, line_pts_x = np.where(self.global_canvas == i + 1)  
-			min_x = np.min(line_pts_x) 
-			max_x = np.max(line_pts_x) 
-			upper_seam = upper_seams_xy[i] 
-			upper_seam = upper_seam[(upper_seam[:, 0] > min_x) & (upper_seam[:, 0] < max_x)] 
-			lower_seam = lower_seams_xy[i] 
-			lower_seam = lower_seam[(lower_seam[:, 0] > min_x) & (lower_seam[:, 0] < max_x)] 
-			polygons.append(np.concatenate([upper_seam, np.flipud(lower_seam)], axis=0)) 
-		return scribbles, polygons, self.global_heat_map
+			try:
+				line_pts_y, line_pts_x = np.where(self.global_canvas == i + 1)  
+				min_x = np.min(line_pts_x) 
+				max_x = np.max(line_pts_x) 
+				upper_seam = upper_seams_xy[i] 
+				upper_seam = upper_seam[(upper_seam[:, 0] > min_x) & (upper_seam[:, 0] < max_x)] 
+				lower_seam = lower_seams_xy[i] 
+				lower_seam = lower_seam[(lower_seam[:, 0] > min_x) & (lower_seam[:, 0] < max_x)] 
+				updated_scribbles.append(self.scribbles[i])
+				updated_polygons.append(np.concatenate([upper_seam, np.flipud(lower_seam)], axis=0))
+				updated_upper_seams_xy.append(upper_seams_xy[i])
+				updated_lower_seams_xy.append(lower_seams_xy[i])
+    
+				# temp3 = cv2.polylines(temp3, [polygons[i]], isClosed=False, color=(np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255)), thickness=2)
+			except Exception as e:
+				# handling some of the scribbles having no points - and np.min(line_pts_x) throws error
+				pass
+		return updated_scribbles, updated_polygons, self.global_heat_map
 	
 
 
