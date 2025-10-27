@@ -9,7 +9,7 @@ import sys
 # Add project root to sys.path to allow imports like 'from src.core...'
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 print(project_root)
-sys.path.insert(0, '/data3/amal.joseph/template_api/web-app/backend/')
+sys.path.insert(0, '/data3/shanmukha.sreevatsa/demo_textline_app/web-app/backend')
 
 # from src.core.config import settings # Load settings first
 from decouple import config

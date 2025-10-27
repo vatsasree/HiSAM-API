@@ -10,21 +10,50 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from src.database.session import get_standalone_session # Use standalone session for tasks
 from src.database import crud, models, schemas
-from decouple import config
+from decouple import config as env_config
 import torch
 import cv2
 import traceback
 
-logger = logging.getLogger(config('LOGGER_NAME') + ".tasks") # Specific logger for tasks
+logger = logging.getLogger(env_config('LOGGER_NAME') + ".tasks") # Specific logger for tasks
 celery_logger = get_task_logger(__name__)
-
+model_config = {
+    "model_type": "vit_l",
+    "checkpoint": "/data3/shanmukha.sreevatsa/demo_textline_app/store/model_files/hisam_chkpts/hi_sam_l.pth",
+    "device": "cuda:0",
+    "devices": [4, 5, 6, 7],
+    "total_points": 1500,
+    "batch_points": 100,
+    "layout_thresh": 0.5,
+    "convert_to_image": False,
+    "convert_to_deskew_image": False,
+    "seed": 42,
+    "use_fgmask": False,
+    "eval": True,
+    "eval_out_file": "output.jsonl",
+    "existing_fgmask_input": "./datasets/HierText/val_fgmask/",
+    "output": "./demo_output",
+    "attn_layers": 1,
+    "batch_inference_size": 1,
+    "hier_det": True,
+    "input": None,
+    "input_pdf": None,
+    "input_size": [1024, 1024],
+    "number_of_gpus": 8,
+    "prompt_len": 12,
+    "vis": False,
+    "num_workers": 1,
+    "max_cores": 128,
+    "batch_size": 1
+}
 
 ## --- Import your inference code ---
 try:
-    from src.ml_models.LineTR.infer_new import Infer
+    # from src.ml_models.LineTR.infer_new import Infer
+    from src.ml_models.hisam_CS.detectors.models.hisam_cs_infer import HiSAMDetector as Infer
     MODEL_LOADED = True
     # --- Initialize the Model ONCE per worker process ---
-    inference_model = Infer()
+    inference_model = Infer(model_config)
     logger.info("Inference model loaded successfully in worker process.")
 except ImportError as e:
     logger.error(f"Failed to import inference code: {e}", exc_info=True)
@@ -88,7 +117,7 @@ def process_image_task(self, doc_id: int):
 
         # --- 3. Perform Inference ---
         # Construct the full path to the image file saved by the API endpoint
-        image_path = Path(config('UPLOAD_DIR')) / db_doc.doc_path
+        image_path = Path(env_config('UPLOAD_DIR')) / db_doc.doc_path
         logger.info(f"{task_id_str} Starting inference for file: {image_path}")
 
         if not image_path.exists():
@@ -100,28 +129,10 @@ def process_image_task(self, doc_id: int):
             raise FileNotFoundError(f"Image file not found: {image_path}") # Raise error to go to except block
 
         # === Call your inference code ===
-        # The 'inference_model' instance was created when the worker started
-        # Note: model.process_image returns scribbles, polygons, processed_image (a numpy array)
-        # from src.ml_models.LineTR.infer_new import Infer
-        # inference_model2 = Infer()
-        scribbles, polygons, heatmap = inference_model.process_image(str(image_path))
-        # if len(scribbles) == 0:
-		# 	logger.info(f"No lines found for Task ID: {self.request.id}] Document ID {doc_id}.")
         
-        binary_map_save_path = Path(config('PROCESSED_IMGS_DIR')) / db_doc.doc_path
-        binary_map_save_path.parent.mkdir(parents=True, exist_ok=True)
-        cv2.imwrite(binary_map_save_path, heatmap)
-        logger.info(f"{task_id_str} Inference completed.")
-        
-        # === Format the results for DB output column ===
-        # Store structured data as JSON string in the 'output' column
-        output_data = {
-            # Convert numpy arrays to lists for JSON serialization
-            "polygons": [p.tolist() for p in polygons] if polygons is not None else [],
-            "scribbles": [s.tolist() for s in scribbles] if scribbles is not None else [],
-            "binary_map_path": str(binary_map_save_path), # Store path if saved
-            # "lines_detected": len(polygons) if polygons is not None else 0
-        }
+        output_data = inference_model.detect(image_path)
+        print('output_data',output_data)
+        logger.info(f"output_data {output_data}")
         output_json = json.dumps(output_data)
         
         # --- 4. Update Status to COMPLETED with results ---
@@ -137,7 +148,7 @@ def process_image_task(self, doc_id: int):
             status = check_and_update_job_status(session, db_doc.job_id)
             
 
-        return {"status": "COMPLETED", "doc_id": doc_id, "output_preview": output_data.get("result")}
+        return {"status": "COMPLETED", "doc_id": doc_id, "output_preview": output_data}
 
     except Exception as e:
         torch.cuda.empty_cache()  # Clear GPU memory on failure

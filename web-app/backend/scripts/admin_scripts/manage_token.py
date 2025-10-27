@@ -9,7 +9,7 @@ import os
 import sys
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # sys.path.insert(0, project_root)
-sys.path.insert(0, '/data3/amal.joseph/template_api/web-app/backend/')
+sys.path.insert(0, '/data3/shanmukha.sreevatsa/demo_textline_app/web-app/backend')
 
 # from src.core.config import settings
 # from src.logging_config import LOGGING_CONFIG
