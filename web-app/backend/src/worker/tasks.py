@@ -19,7 +19,7 @@ logger = logging.getLogger(env_config('LOGGER_NAME') + ".tasks") # Specific logg
 celery_logger = get_task_logger(__name__)
 model_config = {
     "model_type": "vit_l",
-    "checkpoint": "/data3/shanmukha.sreevatsa/demo_textline_app/store/model_files/hisam_chkpts/hi_sam_l.pth",
+    "checkpoint": "/home/sreevatsa.s/HiSAM-API/store/model_files/pretrained_checkpoint/hi_sam_l.pth",
     "device": "cuda:0",
     "devices": [4, 5, 6, 7],
     "total_points": 1500,

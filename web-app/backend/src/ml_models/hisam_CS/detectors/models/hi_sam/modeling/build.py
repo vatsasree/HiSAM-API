@@ -168,7 +168,7 @@ def _build_sam(
                     break
             if not contain_hi_decoder:
                 ckpt_dir = os.path.dirname(checkpoint)
-                with open(os.path.join('/data3/shanmukha.sreevatsa/demo_textline_app/store/model_files/hisam_chkpts', args.model_type+'_maskdecoder.pth'), "rb") as f:
+                with open(os.path.join('/home/sreevatsa.s/HiSAM-API/store/model_files/pretrained_checkpoint', args.model_type+'_maskdecoder.pth'), "rb") as f:
                     mask_decoder_dict = torch.load(f)
                 for key, value in mask_decoder_dict.items():
                     new_key = key.replace('mask_decoder', 'hi_decoder')
@@ -176,11 +176,11 @@ def _build_sam(
 
         # load SAM's ViT backbone paras.
         if args.model_type == 'vit_b':
-            sam_path = os.path.join('/data3/shanmukha.sreevatsa/demo_textline_app/store/model_files/hisam_chkpts', 'sam_vit_b_01ec64.pth')
+            sam_path = os.path.join('/home/sreevatsa.s/HiSAM-API/store/model_files/pretrained_checkpoint', 'sam_vit_b_01ec64.pth')
         elif args.model_type == 'vit_l':
-            sam_path = os.path.join('/data3/shanmukha.sreevatsa/demo_textline_app/store/model_files/hisam_chkpts', 'sam_vit_l_0b3195.pth')
+            sam_path = os.path.join('/home/sreevatsa.s/HiSAM-API/store/model_files/pretrained_checkpoint', 'sam_vit_l_0b3195.pth')
         elif args.model_type == 'vit_h':
-            sam_path = os.path.join('/data3/shanmukha.sreevatsa/demo_textline_app/store/model_files/hisam_chkpts', 'sam_vit_h_4b8939.pth')
+            sam_path = os.path.join('/home/sreevatsa.s/HiSAM-API/store/model_files/pretrained_checkpoint', 'sam_vit_h_4b8939.pth')
         with open(sam_path, "rb") as f:
             sam_dict = torch.load(f)
         for key, value in sam_dict.items():
@@ -298,7 +298,7 @@ def _build_efficient_sam(encoder_patch_embed_dim, encoder_num_heads, args):
                     contain_hi_decoder = True
                     break
             if not contain_hi_decoder:
-                with open(os.path.join('/data3/shanmukha.sreevatsa/demo_textline_app/store/model_files/hisam_chkpts', args.model_type+'_maskdecoder.pth'), "rb") as f_maskdecoder:
+                with open(os.path.join('/home/sreevatsa.s/HiSAM-API/store/model_files/pretrained_checkpoint', args.model_type+'_maskdecoder.pth'), "rb") as f_maskdecoder:
                     mask_decoder_dict = torch.load(f_maskdecoder)
                 for key, value in mask_decoder_dict.items():
                     new_key = key.replace('mask_decoder', 'hi_decoder')
