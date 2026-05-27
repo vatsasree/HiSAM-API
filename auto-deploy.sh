@@ -7,12 +7,12 @@ exec > >(tee -a "$LOGFILE") 2>&1
 echo "=== Starting auto-deploy at $(date) ==="
 
 # === Load conda ===
-source /home/user/anaconda3/etc/profile.d/conda.sh
+source /home/sreevatsa.s/miniconda/etc/profile.d/conda.sh
 conda activate sreevatsa_test
 echo "Activated conda environment"
 
 # === Go to project directory ===
-cd /data3/shanmukha.sreevatsa/demo_textline_app/web-app/backend
+cd /home/sreevatsa.s/HiSAM-API/web-app/backend
 echo "Changed directory to backend"
 
 # === Ensure Docker network exists ===
@@ -52,7 +52,7 @@ if ! docker ps -a --format '{{.Names}}' | grep -q "^${REDIS_CONTAINER}$"; then
         --name "$REDIS_CONTAINER" \
         --network "$NETWORK_NAME" \
         -v bhashini_api_redis_volume:/data \
-        -p 6376:6379 \
+        -p 6380:6379 \
         redis:8.0.2
 else
     echo "Redis container $REDIS_CONTAINER already exists. Restarting..."
@@ -71,11 +71,11 @@ SESSION_NAME_1="celery"
 if ! "$TMUX_BIN" has-session -t $SESSION_NAME_1 2>/dev/null; then
     echo "Starting Celery session..."
     "$TMUX_BIN" new-session -d -s $SESSION_NAME_1 \
-        "source /home/user/anaconda3/etc/profile.d/conda.sh && \
+        "source /home/sreevatsa.s/miniconda/etc/profile.d/conda.sh && \
          conda activate sreevatsa_test && \
-         cd /data3/shanmukha.sreevatsa/demo_textline_app/web-app/backend/ && \
+         cd /home/sreevatsa.s/HiSAM-API/web-app/backend/ && \
          celery -A src.worker.celery_app worker --loglevel=INFO -Q image_processing_queue -c 1 --pool=gevent \
-         -f /data3/shanmukha.sreevatsa/demo_textline_app/store/log_files/celery_log.log \
+         -f /home/sreevatsa.s/HiSAM-API/store/log_files/celery_log.log \
          --max-tasks-per-child=10"
 else
     echo "Celery session already running."
@@ -86,10 +86,10 @@ SESSION_NAME_2="webapp"
 if ! "$TMUX_BIN" has-session -t $SESSION_NAME_2 2>/dev/null; then
     echo "Starting WebApp session..."
     "$TMUX_BIN" new-session -d -s $SESSION_NAME_2 \
-        "source /home/user/anaconda3/etc/profile.d/conda.sh && \
+        "source /home/sreevatsa.s/miniconda/etc/profile.d/conda.sh && \
          conda activate sreevatsa_test && \
-         cd /data3/shanmukha.sreevatsa/demo_textline_app/web-app/backend/ && \
-         uvicorn main:app --host 0.0.0.0 --port 5016 --reload"
+         cd /home/sreevatsa.s/HiSAM-API/web-app/backend/ && \
+         uvicorn main:app --host 0.0.0.0 --port 5001 --reload"
 else
     echo "WebApp session already running."
 fi
